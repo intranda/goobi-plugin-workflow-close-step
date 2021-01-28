@@ -1,6 +1,7 @@
 package de.intranda.goobi.plugins;
 
 import de.sub.goobi.config.ConfigPlugins;
+import de.sub.goobi.helper.Helper;
 import de.sub.goobi.helper.enums.StepStatus;
 import java.io.Serializable;
 import java.text.ParseException;
@@ -10,8 +11,11 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import net.xeoh.plugins.base.annotations.PluginImplementation;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
+import org.apache.commons.configuration.reloading.FileChangedReloadingStrategy;
+import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
 import org.goobi.production.enums.PluginType;
 import org.goobi.production.plugin.interfaces.IPlugin;
 import org.goobi.production.plugin.interfaces.IWorkflowPlugin;
@@ -37,6 +41,12 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     private final String title = "intranda_workflow_closestep";
 
     /**
+     * The configuration file name for this plugin. The directory should be set by helper classes.
+     */
+    @Getter
+    public static final String CONFIGURATION_FILE = "goobi_rest.xml";
+
+    /**
      * The list of steps that should be closed by this plugin, read from configuration file
      */
     private List<CloseableStep> closeableSteps;
@@ -49,15 +59,39 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     private String htmlInformation;
 
     /**
-     * The constructor to get a plugin object. It loads the configuration from the XML file and initializes the list of steps that should be closed.
+     * Information about all loaded configuration, can be shown in the GUI.
+     */
+    @Setter
+    @Getter
+    private static XMLConfiguration configuration;
+
+    /**
+     * The constructor to get a plugin object. It loads the configuration object and the configuration from the XML file and initializes the list of
+     * steps that should be closed.
      */
     public ClosestepWorkflowPlugin() {
         log.info("Closestep workflow plugin started.");
         try {
             this.loadConfiguration();
+            this.loadXML();
             this.htmlInformation = this.toString();
         } catch (ParseException pe) {
             this.htmlInformation = pe.getMessage();
+        } catch (ConfigurationException ce) {
+            this.htmlInformation = ce.getMessage();
+        }
+    }
+
+    /**
+     * Loads the configuration object to read the XML file
+     */
+    public void loadConfiguration() throws ConfigurationException {
+        if (configuration == null) {
+            configuration = new XMLConfiguration();
+            configuration.setDelimiterParsingDisabled(true);
+            configuration.load(new Helper().getGoobiConfigDirectory() + CONFIGURATION_FILE);
+            configuration.setReloadingStrategy(new FileChangedReloadingStrategy());
+            configuration.setExpressionEngine(new XPathExpressionEngine());
         }
     }
 
@@ -66,8 +100,8 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      * 
      * @throws ParseException When there is missing / wrong content in the XML file
      */
-    public void loadConfiguration() throws ParseException {
-        XMLConfiguration configuration = ConfigPlugins.getPluginConfig(this.title);
+    public void loadXML() throws ParseException {
+        //XMLConfiguration configuration = ConfigPlugins.getPluginConfig(this.title);
         List<?> list = configuration.configurationsAt("config_plugin");
         if (list.size() != 1) {
             throw new ParseException("There is no unique root element in the XML file (" + list.size() + " root elements in file)!", 0);
