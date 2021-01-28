@@ -8,7 +8,7 @@ import lombok.Getter;
 /**
  * This class stores a step that should be closed. It contains the name of the step and a list of conditions. The conditions depend on other steps
  * that must have reached a certain status to allow to close this step.
- * 
+ *
  * @author maurice
  */
 public class CloseableStep implements Serializable {
@@ -34,7 +34,7 @@ public class CloseableStep implements Serializable {
 
     /**
      * A constructor to get a CloseableStep object with name and list of conditions
-     * 
+     *
      * @param name The name of the step to close
      * @param conditions The list of conditions
      */

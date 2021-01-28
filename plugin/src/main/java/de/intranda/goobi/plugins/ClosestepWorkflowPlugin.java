@@ -1,12 +1,12 @@
 package de.intranda.goobi.plugins;
 
-import de.sub.goobi.config.ConfigPlugins;
 import de.sub.goobi.helper.Helper;
 import de.sub.goobi.helper.enums.StepStatus;
 import java.io.Serializable;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import javax.servlet.http.Part;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
@@ -22,7 +22,7 @@ import org.goobi.production.plugin.interfaces.IWorkflowPlugin;
 
 /**
  * This plugin is to close steps only when a list of specified other steps have reached a certain status.
- * 
+ *
  * @author maurice
  */
 @PluginImplementation
@@ -47,16 +47,36 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     public static final String CONFIGURATION_FILE = "plugin_intranda_workflow_closestep.xml";
 
     /**
-     * The list of steps that should be closed by this plugin, read from configuration file
+     * The maximum file size in megabyte. This is checked by the validator.
      */
-    private List<CloseableStep> closeableSteps;
+    @Getter
+    public static final int MAXIMUM_FILE_SIZE_IN_MB = 10;
 
     /**
-     * Information about all loaded configuration, can be shown in the GUI.
+     * The File object that was uploaded by the user. This is null before the user uploaded a file.
      */
     @Setter
     @Getter
-    private String htmlInformation;
+    private Part file;
+
+    /**
+     * The File name of the uploaded file. Is null when there is no file.
+     */
+    @Setter
+    @Getter
+    private String fileName;
+
+    /**
+     * The status message for the UI. Contains some information about the upload success or failure.
+     */
+    @Setter
+    @Getter
+    private String statusMessage;
+
+    /**
+     * The list of steps that should be closed by this plugin, read from configuration file
+     */
+    private List<CloseableStep> closeableSteps;
 
     /**
      * Information about all loaded configuration, can be shown in the GUI.
@@ -74,11 +94,11 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         try {
             this.loadConfiguration();
             this.loadXML();
-            this.htmlInformation = this.toString();
+            //this.statusMessage = this.toString();
         } catch (ParseException pe) {
-            this.htmlInformation = pe.getMessage();
+            this.statusMessage = pe.getMessage();
         } catch (ConfigurationException ce) {
-            this.htmlInformation = ce.getMessage();
+            this.statusMessage = ce.getMessage();
         }
     }
 
@@ -97,11 +117,10 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
 
     /**
      * Loads all steps that should be closed with their conditions from the XML file and builds the closeableSteps object
-     * 
+     *
      * @throws ParseException When there is missing / wrong content in the XML file
      */
     public void loadXML() throws ParseException {
-        //XMLConfiguration configuration = ConfigPlugins.getPluginConfig(this.title);
         this.closeableSteps = new ArrayList<CloseableStep>();
         List<?> stepsToClose = configuration.configurationsAt("//step_to_close");
         int stepIndex = 0;
@@ -131,7 +150,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
 
     /**
      * Parses a string representation of a step status to the fitting StepStatus object and returns this object
-     * 
+     *
      * @param status The status as string representation (read from XML-file)
      * @return The parsed StepStatus object
      * @throws ParseException When the string is null, empty or not a valid StepStatus representation
@@ -160,7 +179,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
 
     /**
      * Returns the plugin type of this plugin. This should always be a workflow plugin
-     * 
+     *
      * @return The type of this plugin (always PluginType.Workflow)
      */
     @Override
@@ -194,5 +213,76 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             i++;
         }
         return sb.toString();
+    }
+
+    /**
+     * Uploads a file. Gets the file from the UI and stores the data in the 'objects' file and 'fileName'
+     *
+     * @return The status message, visible for the user in the UI
+     */
+    public String uploadExcelFile() {
+        this.file = this.getFile();
+        if (this.validate()) {
+            this.setUploadedFileName();
+        } else {
+            this.file = null;
+            this.fileName = null;
+        }
+        // TODO: Use the file for some sort of thing
+        /*
+        final Path destination = Paths.get("c:/temp/" + FilenameUtils.getName(getSubmittedFileName(uploadedFile)));
+        InputStream bytes = null;
+        if (null != uploadedFile) {
+            bytes = uploadedFile.getInputStream();
+            Files.copy(bytes, destination);
+        }
+        */
+        return this.statusMessage;
+    }
+
+    /**
+     * Initializes the file name when there already exists an uploaded file. Otherwise the fileName will be set to 'null'
+     */
+    public void setUploadedFileName() {
+        if (this.file == null) {
+            return;
+        }
+        String header = this.file.getHeader("content-disposition");
+        if (header == null) {
+            return;
+        }
+        String[] headerParts = header.split(";");
+        String tmp;
+        int headerIndex = 0;
+        while (headerIndex < headerParts.length) {
+            tmp = headerParts[headerIndex];
+            if (tmp.trim().startsWith("filename")) {
+                tmp = tmp.substring(tmp.indexOf('=') + 1, tmp.length());
+                tmp = tmp.trim().replace("\"", "");
+                this.fileName = tmp;
+            }
+            headerIndex++;
+        }
+        return;
+    }
+
+    /**
+     * Validates the file and sets the status message to the UI in case of wrong file properties.
+     *
+     * @return true When the file was validated successfully
+     */
+    public boolean validate() {
+        if (this.file == null || this.file.getSize() <= 0 || this.file.getContentType().isEmpty()) {
+            this.statusMessage = "Select a valid file.";
+            return false;
+        } else if (!this.file.getContentType().endsWith("xlsx")) {
+            this.statusMessage = "Select an excel file. (File name should end with \".xlsx\")";
+            return false;
+        } else if (this.file.getSize() > 1000 * 1000 * MAXIMUM_FILE_SIZE_IN_MB) {
+            this.statusMessage = "File size is too big. Maximum file size: " + MAXIMUM_FILE_SIZE_IN_MB + "MB.";
+            return false;
+        }
+        this.statusMessage = "Uploaded successfully.";
+        return true;
     }
 }
