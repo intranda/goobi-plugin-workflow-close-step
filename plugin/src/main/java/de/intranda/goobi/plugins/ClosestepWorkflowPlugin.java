@@ -44,7 +44,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      * The configuration file name for this plugin. The directory should be set by helper classes.
      */
     @Getter
-    public static final String CONFIGURATION_FILE = "goobi_rest.xml";
+    public static final String CONFIGURATION_FILE = "plugin_intranda_workflow_closestep.xml";
 
     /**
      * The list of steps that should be closed by this plugin, read from configuration file
@@ -102,12 +102,8 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      */
     public void loadXML() throws ParseException {
         //XMLConfiguration configuration = ConfigPlugins.getPluginConfig(this.title);
-        List<?> list = configuration.configurationsAt("config_plugin");
-        if (list.size() != 1) {
-            throw new ParseException("There is no unique root element in the XML file (" + list.size() + " root elements in file)!", 0);
-        }
-        SubnodeConfiguration configuration2 = (SubnodeConfiguration) list.get(0);
-        List<?> stepsToClose = configuration2.configurationsAt("step_to_close");
+        this.closeableSteps = new ArrayList<CloseableStep>();
+        List<?> stepsToClose = configuration.configurationsAt("//step_to_close");
         int stepIndex = 0;
         while (stepIndex < stepsToClose.size()) {
             SubnodeConfiguration stepConfiguration = (SubnodeConfiguration) stepsToClose.get(stepIndex);
@@ -129,6 +125,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                 conditionIndex++;
             }
             this.closeableSteps.add(new CloseableStep(stepName, conditions));
+            stepIndex++;
         }
     }
 
@@ -143,7 +140,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         if (status == null || status.length() == 0) {
             throw new ParseException("The status string is null or empty!", 0);
         }
-        switch (status) {
+        switch (status.toUpperCase()) {
             case "LOCKED":
                 return StepStatus.LOCKED;
             case "OPEN":
@@ -193,7 +190,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         StringBuffer sb = new StringBuffer();
         int i = 0;
         while (i < this.closeableSteps.size()) {
-            sb.append(this.closeableSteps.get(i).toString());
+            sb.append(this.closeableSteps.get(i).toString() + " ");
             i++;
         }
         return sb.toString();

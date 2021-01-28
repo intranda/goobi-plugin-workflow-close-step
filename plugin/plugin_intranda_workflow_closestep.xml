@@ -1,6 +1,12 @@
 <config_plugin>
-	
-	<!-- configuration item as sample -->
-	<value name="Name Name Name">sample value from config</value>
-	
-</config_plugin>
+	<!-- The status may be LOCKED, OPEN, INWORK, DONE, ERROR or DEACTIVATED -->
+	<step_to_close name="Sell written book">
+		<condition stepname="Buy empty book" status="DONE" />
+		<condition stepname="Write book" status="DONE" />
+	</step_to_close>
+	<step_to_close name="Draw an image">
+		<condition stepname="Take a piece of paper" status="DONE" />
+		<condition stepname="Take a pen" status="DONE" />
+		<condition stepname="Find a good idea" status="INWORK" />
+ 	</step_to_close>
+ </config_plugin>

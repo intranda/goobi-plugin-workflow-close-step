@@ -51,13 +51,17 @@ public class CloseableStep implements Serializable {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Name: " + this.name + "<br />");
-        sb.append("Conditions: <br />");
+        sb.append("STEP: Name: \"" + this.name + "\", ");
+        sb.append("Conditions: [");
         int i = 0;
         while (i < this.conditions.size()) {
-            sb.append("-&gt;&nbsp;" + this.conditions.get(i).toString() + "<br />");
+            sb.append(this.conditions.get(i).toString());
+            if (i < this.conditions.size() - 1) {
+                sb.append(", ");
+            }
             i++;
         }
+        sb.append("]");
         return sb.toString();
     }
 }
