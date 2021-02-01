@@ -2,6 +2,9 @@ package de.intranda.goobi.plugins;
 
 import de.sub.goobi.helper.Helper;
 import de.sub.goobi.helper.enums.StepStatus;
+
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.Serializable;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -16,6 +19,8 @@ import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.reloading.FileChangedReloadingStrategy;
 import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.goobi.production.enums.PluginType;
 import org.goobi.production.plugin.interfaces.IPlugin;
 import org.goobi.production.plugin.interfaces.IWorkflowPlugin;
@@ -74,6 +79,12 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     private String statusMessage;
 
     /**
+     * The content of the XML file. Can be shown in the GUI.
+     */
+    @Getter
+    private String xmlContent;
+
+    /**
      * The list of steps that should be closed by this plugin, read from configuration file
      */
     private List<CloseableStep> closeableSteps;
@@ -94,7 +105,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         try {
             this.loadConfiguration();
             this.loadXML();
-            //this.statusMessage = this.toString();
+            this.xmlContent = this.toString();
         } catch (ParseException pe) {
             this.statusMessage = pe.getMessage();
         } catch (ConfigurationException ce) {
@@ -209,7 +220,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         StringBuffer sb = new StringBuffer();
         int i = 0;
         while (i < this.closeableSteps.size()) {
-            sb.append(this.closeableSteps.get(i).toString() + " ");
+            sb.append(this.closeableSteps.get(i).toString());
             i++;
         }
         return sb.toString();
@@ -222,9 +233,8 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      */
     public String uploadExcelFile() {
         this.file = this.getFile();
-        if (this.validate()) {
-            this.setUploadedFileName();
-        } else {
+        this.setUploadedFileName();
+        if (!this.validate()) {
             this.file = null;
             this.fileName = null;
         }
@@ -273,13 +283,15 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      */
     public boolean validate() {
         if (this.file == null || this.file.getSize() <= 0 || this.file.getContentType().isEmpty()) {
-            this.statusMessage = "Select a valid file.";
+            this.statusMessage = "Please select a valid file.";
             return false;
-        } else if (!this.file.getContentType().endsWith("xlsx")) {
-            this.statusMessage = "Select an excel file. (File name should end with \".xlsx\")";
+        } else if (!this.fileName.endsWith("xls") && !this.fileName.endsWith("xlsx")) {
+            this.statusMessage = "Please select an excel file (should end with \".xls\" or \".xlsx\").";
+            this.statusMessage += " Curent file name: " + this.fileName + ".";
             return false;
         } else if (this.file.getSize() > 1000 * 1000 * MAXIMUM_FILE_SIZE_IN_MB) {
-            this.statusMessage = "File size is too big. Maximum file size: " + MAXIMUM_FILE_SIZE_IN_MB + "MB.";
+            this.statusMessage = "The file size is too big. Maximum file size: " + MAXIMUM_FILE_SIZE_IN_MB + "MB.";
+            this.statusMessage += " Current file size: " + (this.file.getSize() / 1000 / 1000) + " MB.";
             return false;
         }
         this.statusMessage = "Uploaded successfully.";

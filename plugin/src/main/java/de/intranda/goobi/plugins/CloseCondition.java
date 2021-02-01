@@ -50,6 +50,6 @@ public class CloseCondition implements Serializable {
      */
     @Override
     public String toString() {
-        return "\"" + this.stepName + "\" must be \"" + this.status.toString() + "\"";
+        return "Step \"" + this.stepName + "\" in status \"" + this.status.toString() + "\"";
     }
 }

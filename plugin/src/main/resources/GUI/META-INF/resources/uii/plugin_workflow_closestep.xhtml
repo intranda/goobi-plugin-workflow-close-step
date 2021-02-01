@@ -22,13 +22,19 @@
 							<h:panelGroup id="actionform" styleClass="col-sm-12"
 								rendered="#{LoginForm.hasRole('Plugin_workflow_closestep')}">
 								<div class="row">
-									<h3>File Upload for process ids</h3>
 									<h:form id="fileUploadForm" prependId="false" enctype="multipart/form-data">
 										<table>
 											<tr>
+												<th>
+													<h3>File Upload for process ids</h3>
+												</th>
+											</tr>
+											<tr>
 												<td>
-													<h:outputLabel for="fileUploader" value="Select a file: " />
+													<h:outputLabel for="fileUploader" value="Please select an excel file (*.xlsx) containing all process-ids you want to close steps in" />
 												</td>
+											</tr>
+											<tr>
 												<td>
 													<h:inputFile id="fileUploader" value="#{NavigationForm.workflowPlugin.file}">
 														<!--<f:validator validatorId="FileUploadValidator" />-->
@@ -37,15 +43,23 @@
 											</tr>
 											<tr>
 												<td>
-													<h:outputLabel for="statusMessage" value="Status message: " />
-												</td>
-												<td>
-													<h:outputText id="statusMessage" value="#{NavigationForm.workflowPlugin.statusMessage}"/>
+													<h:commandButton value="Upload File" action="#{NavigationForm.workflowPlugin.uploadExcelFile}"></h:commandButton>
 												</td>
 											</tr>
 											<tr>
-												<td colspan="2">
-													<h:commandButton value="Upload File" action="#{NavigationForm.workflowPlugin.uploadExcelFile}"></h:commandButton>
+												<td>
+													<h:outputText id="statusMessage" value="Status message: #{NavigationForm.workflowPlugin.statusMessage}"/>
+												</td>
+											</tr>
+											<tr>
+												<th>
+													<h3>The conditions</h3>
+												</th>
+											</tr>
+											<tr>
+												<td>
+													<h:inputTextarea rows="20" cols="100" escape="false" readonly="true" value="#{NavigationForm.workflowPlugin.xmlContent}">
+													</h:inputTextarea>
 												</td>
 											</tr>
 										</table>
