@@ -2,7 +2,6 @@ package de.intranda.goobi.plugins;
 
 import de.sub.goobi.helper.Helper;
 import de.sub.goobi.helper.enums.StepStatus;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.Serializable;
@@ -19,6 +18,11 @@ import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.reloading.FileChangedReloadingStrategy;
 import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.goobi.production.enums.PluginType;
@@ -28,7 +32,7 @@ import org.goobi.production.plugin.interfaces.IWorkflowPlugin;
 /**
  * This plugin is to close steps only when a list of specified other steps have reached a certain status.
  *
- * @author maurice
+ * @author Maurice Mueller
  */
 @PluginImplementation
 @Log4j2
@@ -76,13 +80,26 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      */
     @Setter
     @Getter
-    private String statusMessage;
+    private String uploadStatusMessage;
+
+    /**
+     * The status message for the UI. Contains some information about the read-in success or failure.
+     */
+    @Setter
+    @Getter
+    private String readInStatusMessage;
 
     /**
      * The content of the XML file. Can be shown in the GUI.
      */
     @Getter
     private String xmlContent;
+
+    /**
+     * The process ids from the excel file to mind when closing steps.
+     */
+    @Getter
+    private List<Integer> processIds;
 
     /**
      * The list of steps that should be closed by this plugin, read from configuration file
@@ -101,15 +118,17 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      * steps that should be closed.
      */
     public ClosestepWorkflowPlugin() {
+        this.uploadStatusMessage = "No file uploaded.";
+        this.readInStatusMessage = "No file uploaded.";
         log.info("Closestep workflow plugin started.");
         try {
             this.loadConfiguration();
             this.loadXML();
             this.xmlContent = this.toString();
         } catch (ParseException pe) {
-            this.statusMessage = pe.getMessage();
+            this.uploadStatusMessage = pe.getMessage();
         } catch (ConfigurationException ce) {
-            this.statusMessage = ce.getMessage();
+            this.uploadStatusMessage = ce.getMessage();
         }
     }
 
@@ -232,22 +251,115 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      * @return The status message, visible for the user in the UI
      */
     public String uploadExcelFile() {
-        this.file = this.getFile();
         this.setUploadedFileName();
         if (!this.validate()) {
             this.file = null;
             this.fileName = null;
         }
-        // TODO: Use the file for some sort of thing
-        /*
-        final Path destination = Paths.get("c:/temp/" + FilenameUtils.getName(getSubmittedFileName(uploadedFile)));
-        InputStream bytes = null;
-        if (null != uploadedFile) {
-            bytes = uploadedFile.getInputStream();
-            Files.copy(bytes, destination);
+        this.readExcelFile();
+        return this.uploadStatusMessage;
+    }
+
+    /**
+     * Validates the file and sets the status message to the UI in case of wrong file properties.
+     *
+     * @return true When the file was validated successfully
+     */
+    public boolean validate() {
+        if (this.file == null || this.file.getSize() <= 0 || this.file.getContentType().isEmpty()) {
+            this.uploadStatusMessage = "Please select a valid file.";
+            return false;
+        } else if (!this.fileName.endsWith("xls") && !this.fileName.endsWith("xlsx")) {
+            this.uploadStatusMessage = "Please select an excel file (should end with \".xls\" or \".xlsx\").";
+            this.uploadStatusMessage += " Curent file name: " + this.fileName + ".";
+            return false;
+        } else if (this.file.getSize() > 1000 * 1000 * MAXIMUM_FILE_SIZE_IN_MB) {
+            this.uploadStatusMessage = "The file size is too big. Maximum file size: " + MAXIMUM_FILE_SIZE_IN_MB + "MB.";
+            this.uploadStatusMessage += " Current file size: " + (this.file.getSize() / 1000 / 1000) + " MB.";
+            return false;
         }
-        */
-        return this.statusMessage;
+        this.uploadStatusMessage = "Uploaded successfully: " + this.fileName + " (file: " + this.file + ")";
+        return true;
+    }
+
+    /**
+     * Closes the specified steps when the button in the GUI was clicked
+     *
+     * @return An empty string until now
+     */
+    public String submit() {
+        if (this.file == null) {
+            this.readInStatusMessage = "Please upload an excel file first." + " (file: " + this.file + ")";
+            return "";
+        }
+        return "";
+    }
+    /**
+     * Reads in the excel file, collects all process ids (all numeric cells and
+     * all text cells containing a number) and generates a new message string.
+     *
+     * @return true When the content of the file could be accepted
+     */
+    public boolean readExcelFile() {
+        this.processIds = new ArrayList<>();
+        Workbook workbook = null;
+        try {
+            FileInputStream file = (FileInputStream)(this.file.getInputStream());
+            if (this.fileName.endsWith("xls")) {
+                workbook = new HSSFWorkbook(file);
+            } else if (this.fileName.endsWith("xlsx")) {
+                workbook = new XSSFWorkbook(file);
+            }
+        } catch (IOException ioe) {
+            this.readInStatusMessage = "Error while reading the excel file: " + ioe.getMessage();
+            return false;
+        }
+        if (workbook == null) {
+            this.readInStatusMessage = "Error: while reading the excel file.";
+            return false;
+        }
+        int numberOfSheets = workbook.getNumberOfSheets();
+        int currentSheet = 0;
+        while (currentSheet < numberOfSheets) {
+            Sheet sheet = workbook.getSheetAt(currentSheet);
+            int numberOfRows = sheet.getLastRowNum();
+            int currentRow = 0;
+            while (currentRow < numberOfRows) {
+                Row row = sheet.getRow(currentRow);
+                int numberOfCells = row.getLastCellNum();
+                int currentCell = 0;
+                while (currentCell < numberOfCells) {
+                    Cell cell = row.getCell(currentCell);
+                    CellType type = cell.getCellTypeEnum();
+                    switch (type) {
+                        case NUMERIC:
+                            this.processIds.add((int)(cell.getNumericCellValue()));
+                            break;
+                        case FORMULA:
+                            // Will never happen (information found in documentation)
+                            break;
+                        case STRING:
+                            try {
+                                this.processIds.add(Integer.parseInt(cell.getStringCellValue()));
+                            } catch (NumberFormatException nfe) {
+                                // This was only a trial, when there is no number, this cell isn't relevant
+                            }
+                            break;
+                        case _NONE:
+                        case BLANK:
+                        case BOOLEAN:
+                        case ERROR:
+                        default:
+                            // Do nothing here, cell doesn't seem to be relevant
+                    }
+                    currentCell++;
+                }
+                currentRow++;
+            }
+            currentSheet++;
+        }
+        this.readInStatusMessage = "Read excel tables successfully! Following process ids will be used: " + this.processIds.toString();
+        return true;
     }
 
     /**
@@ -274,27 +386,5 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             headerIndex++;
         }
         return;
-    }
-
-    /**
-     * Validates the file and sets the status message to the UI in case of wrong file properties.
-     *
-     * @return true When the file was validated successfully
-     */
-    public boolean validate() {
-        if (this.file == null || this.file.getSize() <= 0 || this.file.getContentType().isEmpty()) {
-            this.statusMessage = "Please select a valid file.";
-            return false;
-        } else if (!this.fileName.endsWith("xls") && !this.fileName.endsWith("xlsx")) {
-            this.statusMessage = "Please select an excel file (should end with \".xls\" or \".xlsx\").";
-            this.statusMessage += " Curent file name: " + this.fileName + ".";
-            return false;
-        } else if (this.file.getSize() > 1000 * 1000 * MAXIMUM_FILE_SIZE_IN_MB) {
-            this.statusMessage = "The file size is too big. Maximum file size: " + MAXIMUM_FILE_SIZE_IN_MB + "MB.";
-            this.statusMessage += " Current file size: " + (this.file.getSize() / 1000 / 1000) + " MB.";
-            return false;
-        }
-        this.statusMessage = "Uploaded successfully.";
-        return true;
     }
 }

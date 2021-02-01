@@ -9,7 +9,7 @@ import lombok.Getter;
  * This class stores a condition indicating when an other stop may be closed. You can create an object of this class to indicate that the step with
  * this name must reach the specified status to be allowed to close an other step.
  *
- * @author maurice
+ * @author Maurice Mueller
  */
 public class CloseCondition implements Serializable {
 

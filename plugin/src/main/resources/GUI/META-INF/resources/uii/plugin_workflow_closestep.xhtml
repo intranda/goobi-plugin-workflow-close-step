@@ -48,7 +48,7 @@
 											</tr>
 											<tr>
 												<td>
-													<h:outputText id="statusMessage" value="Status message: #{NavigationForm.workflowPlugin.statusMessage}"/>
+													<h:outputText id="uploadStatusMessage" value="#{NavigationForm.workflowPlugin.uploadStatusMessage}"/>
 												</td>
 											</tr>
 											<tr>
@@ -60,6 +60,16 @@
 												<td>
 													<h:inputTextarea rows="20" cols="100" escape="false" readonly="true" value="#{NavigationForm.workflowPlugin.xmlContent}">
 													</h:inputTextarea>
+												</td>
+											</tr>
+											<tr>
+												<td>
+													<h:commandButton value="Close steps" action="#{NavigationForm.workflowPlugin.submit}"></h:commandButton>
+												</td>
+											</tr>
+											<tr>
+												<td>
+													<h:outputText id="readInStatusMessage" value="#{NavigationForm.workflowPlugin.readInStatusMessage}"/>
 												</td>
 											</tr>
 										</table>
