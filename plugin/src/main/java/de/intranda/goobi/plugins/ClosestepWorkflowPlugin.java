@@ -1,7 +1,9 @@
 package de.intranda.goobi.plugins;
 
+import de.sub.goobi.helper.CloseStepHelper;
 import de.sub.goobi.helper.Helper;
 import de.sub.goobi.helper.enums.StepStatus;
+import de.sub.goobi.persistence.managers.ProcessManager;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.Serializable;
@@ -18,6 +20,7 @@ import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.reloading.FileChangedReloadingStrategy;
 import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
+import org.apache.poi.hssf.OldExcelFormatException;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -25,6 +28,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.goobi.beans.Step;
 import org.goobi.production.enums.PluginType;
 import org.goobi.production.plugin.interfaces.IPlugin;
 import org.goobi.production.plugin.interfaces.IWorkflowPlugin;
@@ -59,7 +63,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      * The maximum file size in megabyte. This is checked by the validator.
      */
     @Getter
-    public static final int MAXIMUM_FILE_SIZE_IN_MB = 10;
+    public static int MAXIMUM_FILE_SIZE_IN_MB;
 
     /**
      * The File object that was uploaded by the user. This is null before the user uploaded a file.
@@ -94,6 +98,12 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      */
     @Getter
     private String xmlContent;
+
+    /**
+     * The information about errors while closing steps
+     */
+    @Getter
+    private String closeStepErrors;
 
     /**
      * The process ids from the excel file to mind when closing steps.
@@ -152,6 +162,15 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      */
     public void loadXML() throws ParseException {
         this.closeableSteps = new ArrayList<CloseableStep>();
+        // Load maximum megabyte per file
+        try {
+            SubnodeConfiguration maximum_megabyte = (SubnodeConfiguration)configuration.configurationsAt("//maximum_megabyte_per_file").get(0);
+            int megabyte = Integer.parseInt(maximum_megabyte.getString("@mb"));
+            MAXIMUM_FILE_SIZE_IN_MB = megabyte;
+        } catch (Exception e) {
+            MAXIMUM_FILE_SIZE_IN_MB = 10;
+        }
+        // Load steps to close
         List<?> stepsToClose = configuration.configurationsAt("//step_to_close");
         int stepIndex = 0;
         while (stepIndex < stepsToClose.size()) {
@@ -261,108 +280,6 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     }
 
     /**
-     * Validates the file and sets the status message to the UI in case of wrong file properties.
-     *
-     * @return true When the file was validated successfully
-     */
-    public boolean validate() {
-        if (this.file == null || this.file.getSize() <= 0 || this.file.getContentType().isEmpty()) {
-            this.uploadStatusMessage = "Please select a valid file.";
-            return false;
-        } else if (!this.fileName.endsWith("xls") && !this.fileName.endsWith("xlsx")) {
-            this.uploadStatusMessage = "Please select an excel file (should end with \".xls\" or \".xlsx\").";
-            this.uploadStatusMessage += " Curent file name: " + this.fileName + ".";
-            return false;
-        } else if (this.file.getSize() > 1000 * 1000 * MAXIMUM_FILE_SIZE_IN_MB) {
-            this.uploadStatusMessage = "The file size is too big. Maximum file size: " + MAXIMUM_FILE_SIZE_IN_MB + "MB.";
-            this.uploadStatusMessage += " Current file size: " + (this.file.getSize() / 1000 / 1000) + " MB.";
-            return false;
-        }
-        this.uploadStatusMessage = "Uploaded successfully: " + this.fileName + " (file: " + this.file + ")";
-        return true;
-    }
-
-    /**
-     * Closes the specified steps when the button in the GUI was clicked
-     *
-     * @return An empty string until now
-     */
-    public String submit() {
-        if (this.file == null) {
-            this.readInStatusMessage = "Please upload an excel file first." + " (file: " + this.file + ")";
-            return "";
-        }
-        return "";
-    }
-    /**
-     * Reads in the excel file, collects all process ids (all numeric cells and
-     * all text cells containing a number) and generates a new message string.
-     *
-     * @return true When the content of the file could be accepted
-     */
-    public boolean readExcelFile() {
-        this.processIds = new ArrayList<>();
-        Workbook workbook = null;
-        try {
-            FileInputStream file = (FileInputStream)(this.file.getInputStream());
-            if (this.fileName.endsWith("xls")) {
-                workbook = new HSSFWorkbook(file);
-            } else if (this.fileName.endsWith("xlsx")) {
-                workbook = new XSSFWorkbook(file);
-            }
-        } catch (IOException ioe) {
-            this.readInStatusMessage = "Error while reading the excel file: " + ioe.getMessage();
-            return false;
-        }
-        if (workbook == null) {
-            this.readInStatusMessage = "Error: while reading the excel file.";
-            return false;
-        }
-        int numberOfSheets = workbook.getNumberOfSheets();
-        int currentSheet = 0;
-        while (currentSheet < numberOfSheets) {
-            Sheet sheet = workbook.getSheetAt(currentSheet);
-            int numberOfRows = sheet.getLastRowNum();
-            int currentRow = 0;
-            while (currentRow < numberOfRows) {
-                Row row = sheet.getRow(currentRow);
-                int numberOfCells = row.getLastCellNum();
-                int currentCell = 0;
-                while (currentCell < numberOfCells) {
-                    Cell cell = row.getCell(currentCell);
-                    CellType type = cell.getCellTypeEnum();
-                    switch (type) {
-                        case NUMERIC:
-                            this.processIds.add((int)(cell.getNumericCellValue()));
-                            break;
-                        case FORMULA:
-                            // Will never happen (information found in documentation)
-                            break;
-                        case STRING:
-                            try {
-                                this.processIds.add(Integer.parseInt(cell.getStringCellValue()));
-                            } catch (NumberFormatException nfe) {
-                                // This was only a trial, when there is no number, this cell isn't relevant
-                            }
-                            break;
-                        case _NONE:
-                        case BLANK:
-                        case BOOLEAN:
-                        case ERROR:
-                        default:
-                            // Do nothing here, cell doesn't seem to be relevant
-                    }
-                    currentCell++;
-                }
-                currentRow++;
-            }
-            currentSheet++;
-        }
-        this.readInStatusMessage = "Read excel tables successfully! Following process ids will be used: " + this.processIds.toString();
-        return true;
-    }
-
-    /**
      * Initializes the file name when there already exists an uploaded file. Otherwise the fileName will be set to 'null'
      */
     public void setUploadedFileName() {
@@ -386,5 +303,205 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             headerIndex++;
         }
         return;
+    }
+
+    /**
+     * Validates the file and sets the status message to the UI in case of wrong file properties.
+     *
+     * @return true When the file was validated successfully
+     */
+    public boolean validate() {
+        if (this.file == null || this.file.getSize() <= 0 || this.file.getContentType().isEmpty()) {
+            this.uploadStatusMessage = "Please select a valid file.";
+            return false;
+        } else if (!this.fileName.endsWith("xls") && !this.fileName.endsWith("xlsx")) {
+            this.uploadStatusMessage = "Please select an excel file (should end with \".xls\" or \".xlsx\").";
+            this.uploadStatusMessage += " Curent file name: " + this.fileName + ".";
+            return false;
+        } else if (this.file.getSize() > 1000 * 1000 * MAXIMUM_FILE_SIZE_IN_MB) {
+            this.uploadStatusMessage = "The file size is too big. Maximum file size: " + MAXIMUM_FILE_SIZE_IN_MB + "MB.";
+            this.uploadStatusMessage += " Current file size: " + (this.file.getSize() / 1000 / 1000) + " MB.";
+            return false;
+        }
+        this.uploadStatusMessage = "Uploaded successfully: " + this.fileName;
+        return true;
+    }
+
+    /**
+     * Reads in the excel file, collects all process ids (all numeric cells and
+     * all text cells containing a number) and generates a new message string.
+     *
+     * @return true When the content of the file could be accepted
+     */
+    public boolean readExcelFile() {
+        this.processIds = new ArrayList<>();
+        Workbook workbook = null;
+        try {
+            FileInputStream file = (FileInputStream)(this.file.getInputStream());
+            if (this.fileName.endsWith("xls")) {
+                workbook = new HSSFWorkbook(file);
+            } else if (this.fileName.endsWith("xlsx")) {
+                workbook = new XSSFWorkbook(file);
+            }
+        } catch (IOException ioe) {
+            this.readInStatusMessage = "Error while reading the excel file: " + ioe.getMessage();
+            return false;
+        } catch (OldExcelFormatException oefe) {
+            this.readInStatusMessage = "The excel file seems to be too old: " + oefe.getMessage();
+            return false;
+        }
+        if (workbook == null) {
+            this.readInStatusMessage = "Error: while reading the excel file.";
+            return false;
+        }
+        int numberOfSheets = workbook.getNumberOfSheets();
+        int currentSheet = 0;
+        while (currentSheet < numberOfSheets) {
+            Sheet sheet = workbook.getSheetAt(currentSheet);
+            if (sheet == null) {
+                currentSheet++;
+                continue;
+            }
+            int numberOfRows = sheet.getLastRowNum() + 1;
+            int currentRow = 0;
+            while (currentRow < numberOfRows) {
+                Row row = sheet.getRow(currentRow);
+                if (row == null) {
+                    currentRow++;
+                    continue;
+                }
+                int numberOfCells = row.getLastCellNum() + 1;
+                int currentCell = 0;
+                while (currentCell < numberOfCells) {
+                    Cell cell = row.getCell(currentCell);
+                    if (cell == null) {
+                        currentCell++;
+                        continue;
+                    }
+                    try {
+                        this.processIds.add((int)(cell.getNumericCellValue()));
+                    } catch (Exception e) {
+                        try {
+                            this.processIds.add(Integer.parseInt(cell.getStringCellValue()));
+                        } catch (NumberFormatException nfe) {
+                            // This was only a trial, when there is no number, this cell isn't relevant
+                        }
+                    }
+                    currentCell++;
+                }
+                currentRow++;
+            }
+            currentSheet++;
+        }
+        this.readInStatusMessage = "Read excel tables successfully! Following process ids will be used: " + this.processIds.toString();
+        return true;
+    }
+
+    /**
+     * Closes the specified steps when the button in the GUI was clicked
+     *
+     * @return An empty string until now
+     */
+    public String submit() {
+        List<String> errorMessages = new ArrayList<>();
+        int idIndex = 0;
+        while (idIndex < processIds.size()) {
+            org.goobi.beans.Process process = ProcessManager.getProcessById(processIds.get(idIndex));
+            if (process != null) {
+                this.closeStepsInProcess(errorMessages, process);
+            } else {
+                errorMessages.add("The process id " + processIds.get(idIndex) + " does not represent an existing process!");
+            }
+            idIndex++;
+        }
+        if (errorMessages.size() == 0) {
+            this.readInStatusMessage = "Closed all chosed steps successfully.";
+            this.closeStepErrors = "No errors.";
+        } else {
+            this.readInStatusMessage = "Not all steps could be closed. You can download an excel file containing all error messages.";
+            StringBuilder sb = new StringBuilder();
+            sb.append(errorMessages.get(0));
+            int line = 1;
+            while (line < errorMessages.size()) {
+                sb.append('\n' + errorMessages.get(line));
+                line++;
+            }
+            this.closeStepErrors = sb.toString();
+        }
+        return "";
+    }
+
+    /**
+     * Closes all fitting steps in one process. This extra method makes the
+     * structure of this algorithm more simple / obvious
+     *
+     * @param errorMessages The list of error messages. New errors can be added here.
+     * @param The process to close the steps in
+     */
+    public void closeStepsInProcess(List<String> errorMessages, org.goobi.beans.Process process) {
+        List<Step> steps = process.getSchritte();
+        int closeableStepIndex = 0;
+        while (closeableStepIndex < this.closeableSteps.size()) {
+            CloseableStep closeableStep = this.closeableSteps.get(closeableStepIndex);
+            int commonStepIndex = this.getIndexOfStepByTitle(steps, closeableStep.getName());
+            if (commonStepIndex != -1) {
+                List<String> messages = this.checkConditionsForStep(steps, closeableStep.getConditions());
+                if (messages.size() == 0) {
+                    CloseStepHelper.closeStep(steps.get(commonStepIndex), Helper.getCurrentUser());
+                } else {
+                    errorMessages.add("Following errors were found for step \"" + steps.get(commonStepIndex).getTitel() + "\" in process \"" + process.getTitel() + ":");
+                    errorMessages.addAll(messages);
+                }
+            } else {
+                errorMessages.add("The step \"" + this.closeableSteps.get(closeableStepIndex).getName() + "\" does not exist in process \"" + process.getTitel() + "\"!");
+            }
+            closeableStepIndex++;
+        }
+    }
+
+    /**
+     * Checks whether all conditions in closeableStep are given
+     *
+     * @param steps The list of steps where to check the conditions
+     * @param conditions All conditions that need to be true
+     * @return Empty string list, when all conditions are true. Otherwise the list of warnings
+     */
+    public List<String> checkConditionsForStep(List<Step> steps, List<CloseCondition> conditions) {
+        List<String> errors = new ArrayList<>();
+        int conditionIndex = 0;
+        while (conditionIndex < conditions.size()) {
+            CloseCondition condition = conditions.get(conditionIndex);
+            int index = this.getIndexOfStepByTitle(steps, condition.getStepName());
+            if (index == -1) {
+                errors.add("\tStep \"" + condition.getStepName() + "\" does not exist in this process!");
+            } else {
+                Step conditionalStep = steps.get(index);
+                if (conditionalStep.getBearbeitungsstatusEnum() != condition.getStatus()) {
+                    errors.add("\tCondition: " + condition.toString() + " is not given!");
+                } // Else: no error
+            }
+            conditionIndex++;
+        }
+        return errors;
+    }
+
+    /**
+     * Searches for the step with the given title (in the list of steps)
+     * and returns the index in the list. When there is no step with that
+     * title in the list, it returns -1.
+     *
+     * @param steps The list of steps
+     * @param title The title to search for in the list
+     * @return The index of the step, otherwise -1
+     */
+    public int getIndexOfStepByTitle(List<Step> steps, String title) {
+        int index = 0;
+        while (index < steps.size()) {
+            if (steps.get(index).getTitel().equals(title)) {
+                return index;
+            }
+            index++;
+        }
+        return -1;
     }
 }

@@ -1,12 +1,17 @@
 <config_plugin>
+	<maximum_megabyte_per_file mb="5" />
 	<!-- The status may be LOCKED, OPEN, INWORK, DONE, ERROR or DEACTIVATED -->
-	<step_to_close name="Sell written book">
-		<condition stepname="Buy empty book" status="DONE" />
-		<condition stepname="Write book" status="DONE" />
+	<step_to_close name="Biografien prüfen">
+		<condition stepname="Einspielen der Images" status="OPEN" />
+		<condition stepname="Archivierung" status="DONE" />
 	</step_to_close>
-	<step_to_close name="Draw an image">
-		<condition stepname="Take a piece of paper" status="DONE" />
-		<condition stepname="Take a pen" status="DONE" />
-		<condition stepname="Find a good idea" status="INWORK" />
- 	</step_to_close>
- </config_plugin>
+	<step_to_close name="Qualitätskontrolle">
+		<condition stepname="Einspielen der Images" status="OPEN" />
+		<condition stepname="Archivierung" status="DONE" />
+	</step_to_close>
+	<step_to_close name="Export in viewer">
+		<condition stepname="Archivierung" status="DONE" />
+		<condition stepname="Einspielen der Images" status="DONE" />
+		<condition stepname="Bibliographische Aufnahme" status="DONE" />
+	</step_to_close>
+</config_plugin>
