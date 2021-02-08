@@ -4,17 +4,25 @@ import de.sub.goobi.helper.CloseStepHelper;
 import de.sub.goobi.helper.Helper;
 import de.sub.goobi.helper.enums.StepStatus;
 import de.sub.goobi.persistence.managers.ProcessManager;
+
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.faces.context.FacesContext;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
+
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
+
 import net.xeoh.plugins.base.annotations.PluginImplementation;
+
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
@@ -23,11 +31,12 @@ import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
 import org.apache.poi.hssf.OldExcelFormatException;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 import org.goobi.beans.Step;
 import org.goobi.production.enums.PluginType;
 import org.goobi.production.plugin.interfaces.IPlugin;
@@ -503,5 +512,48 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             index++;
         }
         return -1;
+    }
+
+    /**
+     * Creates an excel file with all error messages. This method is called
+     * when the user presses the download button for getting the error messages.
+     *
+     * @throws IOException
+     */
+    public void downloadErrorMessagesAsExcelFile() throws IOException {
+        // Create the workbook
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet sheet = workbook.createSheet("Error messages");
+        // Fill the excel file with the error lines
+        int rowCounter = 0;
+        String[] closeStepErrorArray = this.closeStepErrors.split("\n");
+        while (rowCounter < closeStepErrorArray.length) {
+            Row row = sheet.createRow(rowCounter);
+            String line = closeStepErrorArray[rowCounter];
+            Cell cell;
+            if (line.charAt(0) != '\t') {// This line is a title line
+                cell = row.createCell(0);
+            } else {// This line is no title line, indented by 1 cell
+                line = line.substring(1, line.length());// Remove the tab
+                Cell emptyCell = row.createCell(0);
+                emptyCell.setCellValue("");
+                cell = row.createCell(1);
+            }
+            cell.setCellValue(line);
+            rowCounter++;
+        }
+        // Create the byte array for the download
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        workbook.write(outputStream);
+        byte[] bytes = outputStream.toByteArray();
+        workbook.close();
+        // Answer to the download request
+        HttpServletResponse response = (HttpServletResponse) FacesContext.getCurrentInstance().getExternalContext().getResponse();
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment;filename=error_messages.xlsx");
+        response.getOutputStream().write(bytes);
+        response.getOutputStream().flush();
+        response.getOutputStream().close();
+        FacesContext.getCurrentInstance().responseComplete();
     }
 }
