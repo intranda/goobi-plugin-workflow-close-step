@@ -12,6 +12,7 @@ import java.io.Serializable;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.faces.context.FacesContext;
 import javax.servlet.http.HttpServletResponse;
@@ -103,17 +104,29 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     private String readInStatusMessage;
 
     /**
-     * The content of the XML file. Can be shown in the GUI.
+     * A list of lists to store for each step that should be closed a list of errors (or nothing)
      */
     @Getter
-    private String xmlContent;
+    private List<List<String>> errorMessages;
 
     /**
-     * The information about errors while closing steps
+     * A list to store the name of each step that has missing conditions
      */
     @Getter
-    private String closeStepErrors;
+    private List<String> errorMessageTitles;
 
+    /**
+     * The number of error message titles, this is also the number of processes in which steps can not be closed
+     */
+    @Getter
+    private int numberOfErrorMessageTitles;
+
+    /**
+     * This list indicates which of the error messages are open or closed on the GUI
+     */
+    @Setter
+    @Getter
+    private List<Boolean> expandedErrorMessages;
     /**
      * The process ids from the excel file to mind when closing steps.
      */
@@ -143,7 +156,6 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         try {
             this.loadConfiguration();
             this.loadXML();
-            this.xmlContent = this.toString();
         } catch (ParseException pe) {
             this.uploadStatusMessage = pe.getMessage();
         } catch (ConfigurationException ce) {
@@ -173,7 +185,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         this.closeableSteps = new ArrayList<CloseableStep>();
         // Load maximum megabyte per file
         try {
-            SubnodeConfiguration maximum_megabyte = (SubnodeConfiguration)configuration.configurationsAt("//maximum_megabyte_per_file").get(0);
+            SubnodeConfiguration maximum_megabyte = (SubnodeConfiguration) configuration.configurationsAt("//maximum_megabyte_per_file").get(0);
             int megabyte = Integer.parseInt(maximum_megabyte.getString("@mb"));
             MAXIMUM_FILE_SIZE_IN_MB = megabyte;
         } catch (Exception e) {
@@ -197,7 +209,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                 if (stepToCloseName == null || stepToCloseName.length() == 0) {
                     throw new ParseException("Step name is missing for condition " + conditionIndex + " in step-to-close: " + stepName, 0);
                 }
-                StepStatus stepToCloseStatus = parseStepStatus(conditionConfiguration.getString("@status"));
+                StepStatus stepToCloseStatus = this.convertStringToStatus(conditionConfiguration.getString("@status"));
                 conditions.add(new CloseCondition(stepToCloseName, stepToCloseStatus));
                 conditionIndex++;
             }
@@ -213,7 +225,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      * @return The parsed StepStatus object
      * @throws ParseException When the string is null, empty or not a valid StepStatus representation
      */
-    private StepStatus parseStepStatus(String status) throws ParseException {
+    private StepStatus convertStringToStatus(String status) throws ParseException {
         if (status == null || status.length() == 0) {
             throw new ParseException("The status string is null or empty!", 0);
         }
@@ -232,6 +244,30 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                 return StepStatus.DEACTIVATED;
             default:
                 throw new ParseException("This string is no valid step status:\"" + status + "\"!", 0);
+        }
+    }
+
+    /**
+     * Converts a status enum-item to it's string representation
+     *
+     * @param status The status to get the string for
+     */
+    private String convertStatusToString(StepStatus status) {
+        switch (status) {
+            case LOCKED:
+                return "LOCKED";
+            case OPEN:
+                return "OPEN";
+            case INWORK:
+                return "INWORK";
+            case DONE:
+                return "DONE";
+            case ERROR:
+                return "ERROR";
+            case DEACTIVATED:
+                return "DEACTIVATED";
+            default:
+                return "UNKNOWN STATUS";
         }
     }
 
@@ -256,7 +292,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     }
 
     /**
-     * Returns the string representation of the whole list of steps that shoule be closed
+     * Returns the string representation of the whole list of steps that should be closed
      *
      * @return The string representation of all steps
      */
@@ -285,7 +321,8 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             this.fileName = null;
         }
         this.readExcelFile();
-        return this.uploadStatusMessage;
+        this.checkConditionsOrCloseSteps(false);
+        return "";
     }
 
     /**
@@ -337,8 +374,8 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     }
 
     /**
-     * Reads in the excel file, collects all process ids (all numeric cells and
-     * all text cells containing a number) and generates a new message string.
+     * Reads in the excel file, collects all process ids (all numeric cells and all text cells containing a number) and generates a new message
+     * string.
      *
      * @return true When the content of the file could be accepted
      */
@@ -346,7 +383,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         this.processIds = new ArrayList<>();
         Workbook workbook = null;
         try {
-            FileInputStream file = (FileInputStream)(this.file.getInputStream());
+            FileInputStream file = (FileInputStream) (this.file.getInputStream());
             if (this.fileName.endsWith("xls")) {
                 workbook = new HSSFWorkbook(file);
             } else if (this.fileName.endsWith("xlsx")) {
@@ -388,7 +425,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                         continue;
                     }
                     try {
-                        this.processIds.add((int)(cell.getNumericCellValue()));
+                        this.processIds.add((int) (cell.getNumericCellValue()));
                     } catch (Exception e) {
                         try {
                             this.processIds.add(Integer.parseInt(cell.getStringCellValue()));
@@ -402,7 +439,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             }
             currentSheet++;
         }
-        this.readInStatusMessage = "Read excel tables successfully! Following process ids will be used: " + this.processIds.toString();
+        this.readInStatusMessage = "Read process ids successfully! Following process ids will be used: " + this.processIds.toString();
         return true;
     }
 
@@ -411,112 +448,106 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      *
      * @return An empty string until now
      */
-    public String submit() {
-        List<String> errorMessages = new ArrayList<>();
-        int idIndex = 0;
-        while (idIndex < processIds.size()) {
-            org.goobi.beans.Process process = ProcessManager.getProcessById(processIds.get(idIndex));
-            if (process != null) {
-                this.closeStepsInProcess(errorMessages, process);
-            } else {
-                errorMessages.add("The process id " + processIds.get(idIndex) + " does not represent an existing process!");
-            }
-            idIndex++;
-        }
-        if (errorMessages.size() == 0) {
-            this.readInStatusMessage = "Closed all chosed steps successfully.";
-            this.closeStepErrors = "No errors.";
-        } else {
-            this.readInStatusMessage = "Not all steps could be closed. You can download an excel file containing all error messages.";
-            StringBuilder sb = new StringBuilder();
-            sb.append(errorMessages.get(0));
-            int line = 1;
-            while (line < errorMessages.size()) {
-                sb.append('\n' + errorMessages.get(line));
-                line++;
-            }
-            this.closeStepErrors = sb.toString();
-        }
+    public String close() {
+        this.checkConditionsOrCloseSteps(true);
         return "";
     }
 
     /**
-     * Closes all fitting steps in one process. This extra method makes the
-     * structure of this algorithm more simple / obvious
+     * Closes all fitting steps in the given processes. Generates a list with error messages
      *
-     * @param errorMessages The list of error messages. New errors can be added here.
-     * @param The process to close the steps in
+     * @param close Should be true to close the steps, should be false to only get the error messages
      */
-    public void closeStepsInProcess(List<String> errorMessages, org.goobi.beans.Process process) {
-        List<Step> steps = process.getSchritte();
-        int closeableStepIndex = 0;
-        while (closeableStepIndex < this.closeableSteps.size()) {
-            CloseableStep closeableStep = this.closeableSteps.get(closeableStepIndex);
-            int commonStepIndex = this.getIndexOfStepByTitle(steps, closeableStep.getName());
-            if (commonStepIndex != -1) {
-                List<String> messages = this.checkConditionsForStep(steps, closeableStep.getConditions());
-                if (messages.size() == 0) {
-                    CloseStepHelper.closeStep(steps.get(commonStepIndex), Helper.getCurrentUser());
-                } else {
-                    errorMessages.add("Following errors were found for step \"" + steps.get(commonStepIndex).getTitel() + "\" in process \"" + process.getTitel() + ":");
-                    errorMessages.addAll(messages);
+    public void checkConditionsOrCloseSteps(boolean close) {
+        this.errorMessages = new ArrayList<>();
+        this.errorMessageTitles = new ArrayList<>();
+        // Check conditions in all processes
+        int processIndex = 0;
+        while (processIndex < this.processIds.size()) {
+            org.goobi.beans.Process process = ProcessManager.getProcessById(this.processIds.get(processIndex));
+            if (process != null) {
+                List<String> errorsForProcess = new ArrayList<>();
+                // Handle each closable step
+                int closeableStepIndex = 0;
+                while (closeableStepIndex < this.closeableSteps.size()) {
+                    CloseableStep closeableStep = this.closeableSteps.get(closeableStepIndex);
+                    int stepToCloseIndex = this.getIndexOfStepByTitleInProcess(process, closeableStep.getName());
+                    if (stepToCloseIndex != -1) {
+                        Step stepToClose = process.getSchritte().get(stepToCloseIndex);
+                        // Handle each condition for that step
+                        int conditionIndex = 0;
+                        while (conditionIndex < closeableStep.getConditions().size()) {
+                            CloseCondition condition = closeableStep.getConditions().get(conditionIndex);
+                            int indexOfStepThatMustPerformCondition = this.getIndexOfStepByTitleInProcess(process, condition.getStepName());
+                            // Check the step that must have reached a certain state
+                            if (indexOfStepThatMustPerformCondition != -1) {
+                                Step stepThatMustPerformCondition = process.getSchritte().get(indexOfStepThatMustPerformCondition);
+                                if (stepThatMustPerformCondition.getBearbeitungsstatusEnum() == condition.getStatus()) {
+                                    if (close) {
+                                        CloseStepHelper.closeStep(stepToClose, Helper.getCurrentUser());
+                                    }
+                                } else {
+                                    errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + condition.getStepName() + "\" is not in state \""
+                                            + this.convertStatusToString(condition.getStatus()) + "!");
+                                }
+                            } else {
+                                errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + condition.getStepName() + "\" does not exist in this process.");
+                            }
+                            conditionIndex++;
+                        }
+                    } else {
+                        errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + closeableStep.getName() + "\" does not exist in this process.");
+                    }
+                    closeableStepIndex++;
+                }
+                if (errorsForProcess.size() > 0) {
+                    this.errorMessageTitles.add("Process: " + process.getTitel());
+                    this.errorMessages.add(errorsForProcess);
                 }
             } else {
-                errorMessages.add("The step \"" + this.closeableSteps.get(closeableStepIndex).getName() + "\" does not exist in process \"" + process.getTitel() + "\"!");
+                this.errorMessageTitles.add("Process with id number " + this.processIds.get(processIndex) + " does not exist.");
+                List<String> detail = new ArrayList<>();
+                detail.add("No further information");
+                this.errorMessages.add(detail);
             }
-            closeableStepIndex++;
+            processIndex++;
+        }
+        this.expandedErrorMessages = new ArrayList<>();
+        int index = 0;
+        while (index < errorMessageTitles.size()) {
+            this.expandedErrorMessages.add(false);
+            index++;
+        }
+        this.numberOfErrorMessageTitles = this.errorMessageTitles.size();
+        if (this.errorMessages.size() == 0) {
+            this.readInStatusMessage = "Can close all chosed steps successfully.";
+        } else {
+            this.readInStatusMessage = "Not all steps can be closed. You can download an excel file containing all error messages.";
         }
     }
 
     /**
-     * Checks whether all conditions in closeableStep are given
+     * Searches for the step with the given title (in the process) and returns the index in the list. When there is no step with that title in the
+     * list, it returns -1.
      *
-     * @param steps The list of steps where to check the conditions
-     * @param conditions All conditions that need to be true
-     * @return Empty string list, when all conditions are true. Otherwise the list of warnings
-     */
-    public List<String> checkConditionsForStep(List<Step> steps, List<CloseCondition> conditions) {
-        List<String> errors = new ArrayList<>();
-        int conditionIndex = 0;
-        while (conditionIndex < conditions.size()) {
-            CloseCondition condition = conditions.get(conditionIndex);
-            int index = this.getIndexOfStepByTitle(steps, condition.getStepName());
-            if (index == -1) {
-                errors.add("\tStep \"" + condition.getStepName() + "\" does not exist in this process!");
-            } else {
-                Step conditionalStep = steps.get(index);
-                if (conditionalStep.getBearbeitungsstatusEnum() != condition.getStatus()) {
-                    errors.add("\tCondition: " + condition.toString() + " is not given!");
-                } // Else: no error
-            }
-            conditionIndex++;
-        }
-        return errors;
-    }
-
-    /**
-     * Searches for the step with the given title (in the list of steps)
-     * and returns the index in the list. When there is no step with that
-     * title in the list, it returns -1.
-     *
-     * @param steps The list of steps
-     * @param title The title to search for in the list
+     * @param process The process to search the step in
+     * @param title The title to search for in the steps of that process
      * @return The index of the step, otherwise -1
      */
-    public int getIndexOfStepByTitle(List<Step> steps, String title) {
-        int index = 0;
-        while (index < steps.size()) {
-            if (steps.get(index).getTitel().equals(title)) {
-                return index;
+    public int getIndexOfStepByTitleInProcess(org.goobi.beans.Process process, String title) {
+        List<Step> steps = process.getSchritte();
+        int stepIndex = 0;
+        while (stepIndex < steps.size()) {
+            if (steps.get(stepIndex).getTitel().equals(title)) {
+                return stepIndex;
             }
-            index++;
+            stepIndex++;
         }
         return -1;
     }
 
     /**
-     * Creates an excel file with all error messages. This method is called
-     * when the user presses the download button for getting the error messages.
+     * Creates an excel file with all error messages. This method is called when the user presses the download button for getting the error messages.
      *
      * @throws IOException
      */
@@ -526,21 +557,24 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         XSSFSheet sheet = workbook.createSheet("Error messages");
         // Fill the excel file with the error lines
         int rowCounter = 0;
-        String[] closeStepErrorArray = this.closeStepErrors.split("\n");
-        while (rowCounter < closeStepErrorArray.length) {
-            Row row = sheet.createRow(rowCounter);
-            String line = closeStepErrorArray[rowCounter];
-            Cell cell;
-            if (line.charAt(0) != '\t') {// This line is a title line
-                cell = row.createCell(0);
-            } else {// This line is no title line, indented by 1 cell
-                line = line.substring(1, line.length());// Remove the tab
+        int stepCounter = 0;
+        int errorCounter;
+        while (stepCounter < this.errorMessages.size()) {
+            Row titleRow = sheet.createRow(rowCounter);
+            Cell titleCell = titleRow.createCell(0);
+            titleCell.setCellValue(this.errorMessageTitles.get(stepCounter));
+            rowCounter++;
+            errorCounter = 0;
+            while (errorCounter < this.errorMessages.get(stepCounter).size()) {
+                Row row = sheet.createRow(rowCounter);
                 Cell emptyCell = row.createCell(0);
                 emptyCell.setCellValue("");
-                cell = row.createCell(1);
+                Cell cell = row.createCell(1);
+                cell.setCellValue(this.errorMessages.get(stepCounter).get(errorCounter));
+                rowCounter++;
+                errorCounter++;
             }
-            cell.setCellValue(line);
-            rowCounter++;
+            stepCounter++;
         }
         // Create the byte array for the download
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -555,5 +589,16 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         response.getOutputStream().flush();
         response.getOutputStream().close();
         FacesContext.getCurrentInstance().responseComplete();
+    }
+
+    /**
+     * Toggles the visibility of a shown error list when the user clicks on the title
+     */
+    public void toggleExpandedErrorMessage() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
+        Map<String, String> requestParameterMap = facesContext.getExternalContext().getRequestParameterMap();
+        int id = Integer.parseInt(requestParameterMap.get("id"));
+        boolean expanded = this.expandedErrorMessages.get(id).booleanValue();
+        this.expandedErrorMessages.set(id, !expanded);
     }
 }

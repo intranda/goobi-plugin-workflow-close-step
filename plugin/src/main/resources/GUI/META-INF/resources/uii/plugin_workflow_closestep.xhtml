@@ -22,19 +22,13 @@
 							<h:panelGroup id="actionform" styleClass="col-sm-12"
 								rendered="#{LoginForm.hasRole('Plugin_workflow_closestep')}">
 								<div class="row">
+									<h3>File Upload for process ids</h3>
 									<h:form id="fileUploadForm" prependId="false" enctype="multipart/form-data">
 										<table>
-											<tr>
-												<th>
-													<h3>File Upload for process ids</h3>
-												</th>
-											</tr>
 											<tr>
 												<td>
 													<h:outputLabel for="fileUploader" value="Please select an excel file (*.xlsx) containing all process-ids you want to close steps in" />
 												</td>
-											</tr>
-											<tr>
 												<td>
 													<h:inputFile id="fileUploader" value="#{NavigationForm.workflowPlugin.file}">
 														<!--<f:validator validatorId="FileUploadValidator" />-->
@@ -43,42 +37,23 @@
 											</tr>
 											<tr>
 												<td>
-													<h:commandButton value="Upload File" action="#{NavigationForm.workflowPlugin.uploadExcelFile}"></h:commandButton>
+													<h:commandButton value="Upload File / Check conditions" action="#{NavigationForm.workflowPlugin.uploadExcelFile}"></h:commandButton>
 												</td>
-											</tr>
-											<tr>
 												<td>
+													<h5>
+														Upload information
+													</h5>
 													<h:outputText id="uploadStatusMessage" value="#{NavigationForm.workflowPlugin.uploadStatusMessage}"/>
-												</td>
-											</tr>
-											<tr>
-												<th>
-													<h3>The conditions</h3>
-												</th>
-											</tr>
-											<tr>
-												<td>
-													<h:inputTextarea rows="20" cols="100" escape="false" readonly="true" value="#{NavigationForm.workflowPlugin.xmlContent}">
-													</h:inputTextarea>
-												</td>
-											</tr>
-											<tr>
-												<td>
-													<h:commandButton value="Close steps" action="#{NavigationForm.workflowPlugin.submit}"></h:commandButton>
-												</td>
-											</tr>
-											<tr>
-												<td>
+													<h5>
+														File check information
+													</h5>
 													<h:outputText id="readInStatusMessage" value="#{NavigationForm.workflowPlugin.readInStatusMessage}"/>
 												</td>
 											</tr>
 											<tr>
 												<td>
-													<h:inputTextarea rows="20" cols="100" escape="false" readonly="true" value="#{NavigationForm.workflowPlugin.closeStepErrors}">
-													</h:inputTextarea>
+													<h:commandButton value="Close steps" action="#{NavigationForm.workflowPlugin.close}"></h:commandButton>
 												</td>
-											</tr>
-											<tr>
 												<td>
 													<h:commandLink action="#{NavigationForm.workflowPlugin.downloadErrorMessagesAsExcelFile}" title="#{msgs.downloadErrorsAsExcelFile}">
 														<span class="btn margin-right-10 fa fa-floppy-o" />
@@ -86,6 +61,34 @@
 													</h:commandLink>
 												</td>
 											</tr>
+											<ui:fragment rendered="#{NavigationForm.workflowPlugin.numberOfErrorMessageTitles > 0}">
+												<tr>
+													<td colspan="2">
+														<h4>
+															Click the process names to show more information:
+														</h4>
+													</td>
+												</tr>
+												<tr>
+													<td colspan="2">
+														<ul>
+															<ui:repeat value="#{NavigationForm.workflowPlugin.errorMessageTitles}" var="process_name" varStatus="process">
+																<h:commandLink action="#{NavigationForm.workflowPlugin.toggleExpandedErrorMessage}">
+																	<f:param name="id" value="#{process.index}" />
+																	<li>#{process_name}</li>
+																</h:commandLink>
+																<ui:fragment rendered="#{NavigationForm.workflowPlugin.expandedErrorMessages.get(process.index) eq 'true'}">
+																	<ul>
+																		<ui:repeat value="#{NavigationForm.workflowPlugin.errorMessages.get(process.index)}" var="message" varStatus="message_item">
+																			<li>#{message}</li>
+																		</ui:repeat>
+																	</ul>
+																</ui:fragment>
+															</ui:repeat>
+														</ul>
+													</td>
+												</tr>
+											</ui:fragment>
 										</table>
 									</h:form>
 								</div>
