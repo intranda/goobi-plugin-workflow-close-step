@@ -1,10 +1,5 @@
 package de.intranda.goobi.plugins;
 
-import de.sub.goobi.helper.CloseStepHelper;
-import de.sub.goobi.helper.Helper;
-import de.sub.goobi.helper.enums.StepStatus;
-import de.sub.goobi.persistence.managers.ProcessManager;
-
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -17,12 +12,6 @@ import java.util.Map;
 import javax.faces.context.FacesContext;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
-
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.log4j.Log4j2;
-
-import net.xeoh.plugins.base.annotations.PluginImplementation;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.SubnodeConfiguration;
@@ -37,11 +26,19 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
 import org.goobi.beans.Step;
 import org.goobi.production.enums.PluginType;
 import org.goobi.production.plugin.interfaces.IPlugin;
 import org.goobi.production.plugin.interfaces.IWorkflowPlugin;
+
+import de.sub.goobi.helper.CloseStepHelper;
+import de.sub.goobi.helper.Helper;
+import de.sub.goobi.helper.enums.StepStatus;
+import de.sub.goobi.persistence.managers.ProcessManager;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.log4j.Log4j2;
+import net.xeoh.plugins.base.annotations.PluginImplementation;
 
 /**
  * This plugin is to close steps only when a list of specified other steps have reached a certain status.
@@ -136,7 +133,15 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     /**
      * The list of steps that should be closed by this plugin, read from configuration file
      */
+    @Getter
     private List<CloseableStep> closeableSteps;
+
+    /**
+     * The currently selected step
+     */
+    @Getter
+    @Setter
+    private String selectedStep;
 
     /**
      * Information about all loaded configuration, can be shown in the GUI.
@@ -198,7 +203,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             SubnodeConfiguration stepConfiguration = (SubnodeConfiguration) stepsToClose.get(stepIndex);
             String stepName = stepConfiguration.getString("@name");
             if (stepName == null || stepName.length() == 0) {
-                throw new ParseException("Step name is missing in step " + (stepIndex + 1) + "!", 0);
+                throw new ParseException("Step name is missing in step " + (stepIndex + 1), 0);
             }
             List<?> conditionsRawData = stepConfiguration.configurationsAt("condition");
             List<CloseCondition> conditions = new ArrayList<>();
@@ -227,7 +232,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      */
     private StepStatus convertStringToStatus(String status) throws ParseException {
         if (status == null || status.length() == 0) {
-            throw new ParseException("The status string is null or empty!", 0);
+            throw new ParseException("The status string is null or empty", 0);
         }
         switch (status.toUpperCase()) {
             case "LOCKED":
@@ -243,7 +248,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             case "DEACTIVATED":
                 return StepStatus.DEACTIVATED;
             default:
-                throw new ParseException("This string is no valid step status:\"" + status + "\"!", 0);
+                throw new ParseException("This string is no valid step status:\"" + status + "\"", 0);
         }
     }
 
@@ -296,6 +301,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      *
      * @return The string representation of all steps
      */
+    @Override
     public String toString() {
         if (this.closeableSteps == null) {
             return "";
@@ -416,24 +422,18 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                     currentRow++;
                     continue;
                 }
-                int numberOfCells = row.getLastCellNum() + 1;
-                int currentCell = 0;
-                while (currentCell < numberOfCells) {
-                    Cell cell = row.getCell(currentCell);
-                    if (cell == null) {
-                        currentCell++;
-                        continue;
-                    }
+                Cell cell = row.getCell(1);
+                if (cell == null) {
+                    continue;
+                }
+                try {
+                    this.processIds.add((int) (cell.getNumericCellValue()));
+                } catch (Exception e) {
                     try {
-                        this.processIds.add((int) (cell.getNumericCellValue()));
-                    } catch (Exception e) {
-                        try {
-                            this.processIds.add(Integer.parseInt(cell.getStringCellValue()));
-                        } catch (NumberFormatException nfe) {
-                            // This was only a trial, when there is no number, this cell isn't relevant
-                        }
+                        this.processIds.add(Integer.parseInt(cell.getStringCellValue()));
+                    } catch (NumberFormatException nfe) {
+                        // This was only a trial, when there is no number, this cell isn't relevant
                     }
-                    currentCell++;
                 }
                 currentRow++;
             }
@@ -468,40 +468,42 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             if (process != null) {
                 List<String> errorsForProcess = new ArrayList<>();
                 // Handle each closable step
-                int closeableStepIndex = 0;
-                while (closeableStepIndex < this.closeableSteps.size()) {
-                    CloseableStep closeableStep = this.closeableSteps.get(closeableStepIndex);
-                    int stepToCloseIndex = this.getIndexOfStepByTitleInProcess(process, closeableStep.getName());
-                    if (stepToCloseIndex != -1) {
-                        Step stepToClose = process.getSchritte().get(stepToCloseIndex);
-                        // Handle each condition for that step
-                        int conditionIndex = 0;
-                        while (conditionIndex < closeableStep.getConditions().size()) {
-                            CloseCondition condition = closeableStep.getConditions().get(conditionIndex);
-                            int indexOfStepThatMustPerformCondition = this.getIndexOfStepByTitleInProcess(process, condition.getStepName());
-                            // Check the step that must have reached a certain state
-                            if (indexOfStepThatMustPerformCondition != -1) {
-                                Step stepThatMustPerformCondition = process.getSchritte().get(indexOfStepThatMustPerformCondition);
-                                if (stepThatMustPerformCondition.getBearbeitungsstatusEnum() == condition.getStatus()) {
-                                    if (close) {
-                                        CloseStepHelper.closeStep(stepToClose, Helper.getCurrentUser());
-                                    }
-                                } else {
-                                    errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + condition.getStepName() + "\" is not in state \""
-                                            + this.convertStatusToString(condition.getStatus()) + "!");
+                CloseableStep closeableStep = this.closeableSteps.stream()
+                        .filter((step -> step.getName().equals(this.selectedStep)))
+                        .findAny()
+                        .get();
+                int stepToCloseIndex = this.getIndexOfStepByTitleInProcess(process, closeableStep.getName());
+                if (stepToCloseIndex != -1) {
+                    Step stepToClose = process.getSchritte().get(stepToCloseIndex);
+                    // Handle each condition for that step
+                    int conditionIndex = 0;
+                    while (conditionIndex < closeableStep.getConditions().size()) {
+                        CloseCondition condition = closeableStep.getConditions().get(conditionIndex);
+                        int indexOfStepThatMustPerformCondition = this.getIndexOfStepByTitleInProcess(process, condition.getStepName());
+                        // Check the step that must have reached a certain state
+                        if (indexOfStepThatMustPerformCondition != -1) {
+                            Step stepThatMustPerformCondition = process.getSchritte().get(indexOfStepThatMustPerformCondition);
+                            if (stepThatMustPerformCondition.getBearbeitungsstatusEnum() == condition.getStatus()) {
+                                if (close) {
+                                    CloseStepHelper.closeStep(stepToClose, Helper.getCurrentUser());
                                 }
                             } else {
-                                errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + condition.getStepName() + "\" does not exist in this process.");
+                                errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + condition.getStepName()
+                                        + "\" is not in state \""
+                                        + this.convertStatusToString(condition.getStatus()) + "!");
                             }
-                            conditionIndex++;
+                        } else {
+                            errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + condition.getStepName()
+                                    + "\" does not exist in this process.");
                         }
-                    } else {
-                        errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + closeableStep.getName() + "\" does not exist in this process.");
+                        conditionIndex++;
                     }
-                    closeableStepIndex++;
+                } else {
+                    errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + closeableStep.getName()
+                            + "\" does not exist in this process.");
                 }
                 if (errorsForProcess.size() > 0) {
-                    this.errorMessageTitles.add("Process: " + process.getTitel());
+                    this.errorMessageTitles.add(process.getTitel());
                     this.errorMessages.add(errorsForProcess);
                 }
             } else {
