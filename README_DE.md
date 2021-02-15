@@ -7,7 +7,7 @@ Beschreibung: >-
 
 ## Einführung
 
-Dieses Workflow-Plugin ermöglicht es, einen bestimmten Schritt in mehreren Vorgängen gleichzeitig zu schließen. Die dafür zur Verfügung stehenden Schritte werden vorher in einer Konfigurationsdatei festgelegt und stehen später auf der Web-Oberfläche zur Auswahl. Die Prozesse, in denen der ausgewählte Schritt geschlossen werden soll, werden per Datei-Upload festgelegt. 
+Dieses Workflow-Plugin ermöglicht es, einen bestimmten Schritt in mehreren Vorgängen gleichzeitig zu schließen. Die dafür zur Verfügung stehenden Schritte werden vorher in einer Konfigurationsdatei festgelegt und stehen später auf der Web-Oberfläche zur Auswahl. Die Vorgänge, in denen der ausgewählte Schritt geschlossen werden soll, werden per Datei-Upload festgelegt. 
 
 ## Übersicht
 
@@ -69,7 +69,7 @@ Zusätzlich kann die maximale Dateigröße (in Megabyte) für den Upload festgel
 Für eine Nutzung dieses Plugins muss der Nutzer über die korrekte Rollenberechtigung verfügen.
 
 <!---
-Hier noch die richtige Rolle eintragen und die BIldschirmfotos machen
+Hier noch die richtige Rolle eintragen und die Bildschirmfotos machen
 -->
 
 ![Ohne korrekte Berechtigung ist das Plugin nicht nutzbar](../.gitbook/assets/intranda_workflow_closestep1_de.png)
