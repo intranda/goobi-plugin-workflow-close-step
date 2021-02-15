@@ -198,8 +198,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         }
         // Load steps to close
         List<?> stepsToClose = configuration.configurationsAt("//step_to_close");
-        int stepIndex = 0;
-        while (stepIndex < stepsToClose.size()) {
+        for (int stepIndex = 0; stepIndex < stepsToClose.size(); stepIndex++) {
             SubnodeConfiguration stepConfiguration = (SubnodeConfiguration) stepsToClose.get(stepIndex);
             String stepName = stepConfiguration.getString("@name");
             if (stepName == null || stepName.length() == 0) {
@@ -207,8 +206,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             }
             List<?> conditionsRawData = stepConfiguration.configurationsAt("condition");
             List<CloseCondition> conditions = new ArrayList<>();
-            int conditionIndex = 0;
-            while (conditionIndex < conditionsRawData.size()) {
+            for (int conditionIndex = 0; conditionIndex < conditionsRawData.size(); conditionIndex++) {
                 SubnodeConfiguration conditionConfiguration = (SubnodeConfiguration) conditionsRawData.get(conditionIndex);
                 String stepToCloseName = conditionConfiguration.getString("@stepname");
                 if (stepToCloseName == null || stepToCloseName.length() == 0) {
@@ -216,10 +214,8 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                 }
                 StepStatus stepToCloseStatus = this.convertStringToStatus(conditionConfiguration.getString("@status"));
                 conditions.add(new CloseCondition(stepToCloseName, stepToCloseStatus));
-                conditionIndex++;
             }
             this.closeableSteps.add(new CloseableStep(stepName, conditions));
-            stepIndex++;
         }
     }
 
@@ -307,10 +303,8 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             return "";
         }
         StringBuffer sb = new StringBuffer();
-        int i = 0;
-        while (i < this.closeableSteps.size()) {
+        for (int i = 0; i < this.closeableSteps.size(); i++) {
             sb.append(this.closeableSteps.get(i).toString());
-            i++;
         }
         return sb.toString();
     }
@@ -344,15 +338,13 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         }
         String[] headerParts = header.split(";");
         String tmp;
-        int headerIndex = 0;
-        while (headerIndex < headerParts.length) {
+        for (int headerIndex = 0; headerIndex < headerParts.length; headerIndex++) {
             tmp = headerParts[headerIndex];
             if (tmp.trim().startsWith("filename")) {
                 tmp = tmp.substring(tmp.indexOf('=') + 1, tmp.length());
                 tmp = tmp.trim().replace("\"", "");
                 this.fileName = tmp;
             }
-            headerIndex++;
         }
         return;
     }
@@ -407,16 +399,14 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             return false;
         }
         int numberOfSheets = workbook.getNumberOfSheets();
-        int currentSheet = 0;
-        while (currentSheet < numberOfSheets) {
+        for (int currentSheet = 0; currentSheet < numberOfSheets; currentSheet++) {
             Sheet sheet = workbook.getSheetAt(currentSheet);
             if (sheet == null) {
                 currentSheet++;
                 continue;
             }
             int numberOfRows = sheet.getLastRowNum() + 1;
-            int currentRow = 0;
-            while (currentRow < numberOfRows) {
+            for (int currentRow = 0; currentRow < numberOfRows; currentRow++) {
                 Row row = sheet.getRow(currentRow);
                 if (row == null) {
                     currentRow++;
@@ -435,9 +425,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                         // This was only a trial, when there is no number, this cell isn't relevant
                     }
                 }
-                currentRow++;
             }
-            currentSheet++;
         }
         this.readInStatusMessage = "Read process ids successfully! Following process ids will be used: " + this.processIds.toString();
         return true;
@@ -462,8 +450,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         this.errorMessages = new ArrayList<>();
         this.errorMessageTitles = new ArrayList<>();
         // Check conditions in all processes
-        int processIndex = 0;
-        while (processIndex < this.processIds.size()) {
+        for (int processIndex = 0; processIndex < this.processIds.size(); processIndex++) {
             org.goobi.beans.Process process = ProcessManager.getProcessById(this.processIds.get(processIndex));
             if (process != null) {
                 List<String> errorsForProcess = new ArrayList<>();
@@ -476,8 +463,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                 if (stepToCloseIndex != -1) {
                     Step stepToClose = process.getSchritte().get(stepToCloseIndex);
                     // Handle each condition for that step
-                    int conditionIndex = 0;
-                    while (conditionIndex < closeableStep.getConditions().size()) {
+                    for (int conditionIndex = 0; conditionIndex < closeableStep.getConditions().size(); conditionIndex++) {
                         CloseCondition condition = closeableStep.getConditions().get(conditionIndex);
                         int indexOfStepThatMustPerformCondition = this.getIndexOfStepByTitleInProcess(process, condition.getStepName());
                         // Check the step that must have reached a certain state
@@ -496,7 +482,6 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                             errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + condition.getStepName()
                                     + "\" does not exist in this process.");
                         }
-                        conditionIndex++;
                     }
                 } else {
                     errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + closeableStep.getName()
@@ -512,13 +497,10 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                 detail.add("No further information");
                 this.errorMessages.add(detail);
             }
-            processIndex++;
         }
         this.expandedErrorMessages = new ArrayList<>();
-        int index = 0;
-        while (index < errorMessageTitles.size()) {
+        for (int index = 0; index < errorMessageTitles.size(); index++) {
             this.expandedErrorMessages.add(false);
-            index++;
         }
         this.numberOfErrorMessageTitles = this.errorMessageTitles.size();
         if (this.errorMessages.size() == 0) {
@@ -538,12 +520,10 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      */
     public int getIndexOfStepByTitleInProcess(org.goobi.beans.Process process, String title) {
         List<Step> steps = process.getSchritte();
-        int stepIndex = 0;
-        while (stepIndex < steps.size()) {
+        for (int stepIndex = 0; stepIndex < steps.size(); stepIndex++) {
             if (steps.get(stepIndex).getTitel().equals(title)) {
                 return stepIndex;
             }
-            stepIndex++;
         }
         return -1;
     }
@@ -559,24 +539,19 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         XSSFSheet sheet = workbook.createSheet("Error messages");
         // Fill the excel file with the error lines
         int rowCounter = 0;
-        int stepCounter = 0;
-        int errorCounter;
-        while (stepCounter < this.errorMessages.size()) {
+        for (int stepCounter = 0; stepCounter < this.errorMessages.size(); stepCounter++) {
             Row titleRow = sheet.createRow(rowCounter);
             Cell titleCell = titleRow.createCell(0);
             titleCell.setCellValue(this.errorMessageTitles.get(stepCounter));
             rowCounter++;
-            errorCounter = 0;
-            while (errorCounter < this.errorMessages.get(stepCounter).size()) {
+            for (int errorCounter = 0; errorCounter < this.errorMessages.get(stepCounter).size(); errorCounter++) {
                 Row row = sheet.createRow(rowCounter);
                 Cell emptyCell = row.createCell(0);
                 emptyCell.setCellValue("");
                 Cell cell = row.createCell(1);
                 cell.setCellValue(this.errorMessages.get(stepCounter).get(errorCounter));
                 rowCounter++;
-                errorCounter++;
             }
-            stepCounter++;
         }
         // Create the byte array for the download
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
