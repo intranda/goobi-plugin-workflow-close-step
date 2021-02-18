@@ -101,6 +101,26 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     private String readInStatusMessage;
 
     /**
+     * This flag is true when the file was read and there are no process ids. The user gets the information that process ids are expected in the
+     * second column.
+     */
+    @Getter
+    private boolean noProcessesFound = false;
+
+    /**
+     * A list of status messages. In each process the step could be closed, is already closed or could not be closed. This information is collected
+     * for the step in each process. Each element consists of three elements: process title, process id, status
+     */
+    @Getter
+    private List<String[]> statusMessages;
+
+    /**
+     * The status messages (merged as strings to list them in the GUI)
+     */
+    @Getter
+    List<String> statusMessageStrings;
+
+    /**
      * A list of lists to store for each step that should be closed a list of errors (or nothing)
      */
     @Getter
@@ -135,6 +155,12 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      */
     @Getter
     private List<CloseableStep> closeableSteps;
+
+    /**
+     * The flag that indicates whether the process of closing all possible steps is done
+     */
+    @Getter
+    private boolean closingStepsDone = false;
 
     /**
      * The currently selected step
@@ -367,7 +393,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             this.uploadStatusMessage += " Current file size: " + (this.file.getSize() / 1000 / 1000) + " MB.";
             return false;
         }
-        this.uploadStatusMessage = "Uploaded successfully: " + this.fileName;
+        this.uploadStatusMessage = "";
         return true;
     }
 
@@ -387,6 +413,9 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             } else if (this.fileName.endsWith("xlsx")) {
                 workbook = new XSSFWorkbook(file);
             }
+        } catch (NullPointerException npe) {
+            this.readInStatusMessage = "Error while reading the excel file: " + npe.getMessage();
+            return false;
         } catch (IOException ioe) {
             this.readInStatusMessage = "Error while reading the excel file: " + ioe.getMessage();
             return false;
@@ -427,7 +456,8 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                 }
             }
         }
-        this.readInStatusMessage = "Read process ids successfully! Following process ids will be used: " + this.processIds.toString();
+        this.noProcessesFound = (this.processIds.size() == 0);
+        this.readInStatusMessage = "";
         return true;
     }
 
@@ -447,12 +477,17 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      * @param close Should be true to close the steps, should be false to only get the error messages
      */
     public void checkConditionsOrCloseSteps(boolean close) {
+        this.statusMessages = new ArrayList<>();
+        this.statusMessageStrings = new ArrayList<>();
         this.errorMessages = new ArrayList<>();
         this.errorMessageTitles = new ArrayList<>();
         // Check conditions in all processes
         for (int processIndex = 0; processIndex < this.processIds.size(); processIndex++) {
-            org.goobi.beans.Process process = ProcessManager.getProcessById(this.processIds.get(processIndex));
+            int processIdInt = this.processIds.get(processIndex);
+            org.goobi.beans.Process process = ProcessManager.getProcessById(processIdInt);
+            String processId = String.valueOf(processIdInt);// This is needed for the status message table
             if (process != null) {
+                String processTitle = process.getTitel();// This is needed for the status message table
                 List<String> errorsForProcess = new ArrayList<>();
                 // Handle each closable step
                 CloseableStep closeableStep = this.closeableSteps.stream()
@@ -462,40 +497,56 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                 int stepToCloseIndex = this.getIndexOfStepByTitleInProcess(process, closeableStep.getName());
                 if (stepToCloseIndex != -1) {
                     Step stepToClose = process.getSchritte().get(stepToCloseIndex);
-                    // Handle each condition for that step
-                    for (int conditionIndex = 0; conditionIndex < closeableStep.getConditions().size(); conditionIndex++) {
-                        CloseCondition condition = closeableStep.getConditions().get(conditionIndex);
-                        int indexOfStepThatMustPerformCondition = this.getIndexOfStepByTitleInProcess(process, condition.getStepName());
-                        // Check the step that must have reached a certain state
-                        if (indexOfStepThatMustPerformCondition != -1) {
-                            Step stepThatMustPerformCondition = process.getSchritte().get(indexOfStepThatMustPerformCondition);
-                            if (stepThatMustPerformCondition.getBearbeitungsstatusEnum() == condition.getStatus()) {
-                                if (close) {
-                                    CloseStepHelper.closeStep(stepToClose, Helper.getCurrentUser());
+                    if (stepToClose.getBearbeitungsstatusEnum() != StepStatus.DONE) {// Otherwise the step is already closed
+                        // Handle each condition for that step
+                        boolean canBeClosed = true;
+                        for (int conditionIndex = 0; conditionIndex < closeableStep.getConditions().size(); conditionIndex++) {
+                            CloseCondition condition = closeableStep.getConditions().get(conditionIndex);
+                            int indexOfStepThatMustPerformCondition = this.getIndexOfStepByTitleInProcess(process, condition.getStepName());
+                            // Check the step that must have reached a certain state
+                            if (indexOfStepThatMustPerformCondition != -1) {
+                                Step stepThatMustPerformCondition = process.getSchritte().get(indexOfStepThatMustPerformCondition);
+                                if (stepThatMustPerformCondition.getBearbeitungsstatusEnum() != condition.getStatus()) {
+                                    canBeClosed = false;
+                                    errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + condition.getStepName()
+                                            + "\" is not in state \""
+                                            + this.convertStatusToString(condition.getStatus()) + "!");
                                 }
                             } else {
+                                canBeClosed = false;
                                 errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + condition.getStepName()
-                                        + "\" is not in state \""
-                                        + this.convertStatusToString(condition.getStatus()) + "!");
+                                        + "\" does not exist in this process.");
                             }
-                        } else {
-                            errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + condition.getStepName()
-                                    + "\" does not exist in this process.");
                         }
+                        if (canBeClosed && close) {
+                            CloseStepHelper.closeStep(stepToClose, Helper.getCurrentUser());
+                        }
+                        String message = "\"" + closeableStep.getName() + "\" can" + (canBeClosed ? " " : " not ") + "be closed.";
+                        this.statusMessageStrings.add(processTitle + ": " + message);
+                        this.statusMessages.add(new String[] { processTitle, processId, message });
+                    } else {
+                        String message = "\"" + closeableStep.getName() + "\" is already closed.";
+                        this.statusMessageStrings.add(processTitle + ": " + message);
+                        this.statusMessages.add(new String[] { processTitle, processId, message });
+                        errorsForProcess.add("\"" + closeableStep.getName() + "\" is already closed.");
                     }
                 } else {
-                    errorsForProcess.add("Cannot close \"" + closeableStep.getName() + "\" because step \"" + closeableStep.getName()
-                            + "\" does not exist in this process.");
+                    String error = "\"" + closeableStep.getName() + "\" does not exist in this process.";
+                    errorsForProcess.add(error);
+                    this.statusMessages.add(new String[] { processTitle, processId, error });
+                    this.statusMessageStrings.add(processTitle + ": " + error);
                 }
                 if (errorsForProcess.size() > 0) {
                     this.errorMessageTitles.add(process.getTitel());
                     this.errorMessages.add(errorsForProcess);
                 }
             } else {
-                this.errorMessageTitles.add("Process with id number " + this.processIds.get(processIndex) + " does not exist.");
                 List<String> detail = new ArrayList<>();
                 detail.add("No further information");
                 this.errorMessages.add(detail);
+                this.errorMessageTitles.add("Process with id number " + processId + " does not exist.");
+                this.statusMessages.add(new String[] { "[No title]", processId, "The process id does not exist." });
+                this.statusMessageStrings.add(processId + " does not exist.");
             }
         }
         this.expandedErrorMessages = new ArrayList<>();
@@ -507,6 +558,9 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             this.readInStatusMessage = "Can close all chosed steps successfully.";
         } else {
             this.readInStatusMessage = "Not all steps can be closed. You can download an excel file containing all error messages.";
+        }
+        if (close) {
+            this.closingStepsDone = true;
         }
     }
 
@@ -531,10 +585,9 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     /**
      * Creates an excel file with all error messages. This method is called when the user presses the download button for getting the error messages.
      *
-     * @throws IOException
+     * @throws IOException When there is an error with the output stream while downloading
      */
     public void downloadErrorMessagesAsExcelFile() throws IOException {
-        // Create the workbook
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("Error messages");
         // Fill the excel file with the error lines
@@ -553,6 +606,45 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                 rowCounter++;
             }
         }
+        ClosestepWorkflowPlugin.downloadWorkbook(workbook, "error_messages.xlsx");
+    }
+
+    /**
+     * Creates an excel file with the status message for each process. This method is called when the user presses the download button for getting the
+     * status messages.
+     *
+     * @throws IOException When there is an error with the output stream while downloading
+     */
+    public void downloadStatusMessagesAsExcelFile() throws IOException {
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet sheet = workbook.createSheet("Status messages");
+        // Fill the excel file with the error lines
+        Row titleRow = sheet.createRow(0);
+        Cell titleCellTitle = titleRow.createCell(0);
+        titleCellTitle.setCellValue("Process Title");
+        Cell titleCellId = titleRow.createCell(1);
+        titleCellId.setCellValue("Process ID");
+        Cell titleCellStatus = titleRow.createCell(2);
+        titleCellStatus.setCellValue("Status");
+        for (int processCounter = 0; processCounter < this.statusMessages.size(); processCounter++) {
+            String[] message = this.statusMessages.get(processCounter);
+            Row row = sheet.createRow(processCounter + 1);// +1 because the title row is row 0
+            for (int column = 0; column < message.length; column++) {
+                Cell cell = row.createCell(column);
+                cell.setCellValue(message[column]);
+            }
+        }
+        ClosestepWorkflowPlugin.downloadWorkbook(workbook, "status_messages.xlsx");
+    }
+
+    /**
+     * Creates the byte stream and offers the workbook to download (independently of the content)
+     *
+     * @param workbook The workbook to download
+     * @param fileName The predefined name that is shown in the download window for the user
+     * @throws IOException When there is an error with the output stream while downloading
+     */
+    private static void downloadWorkbook(XSSFWorkbook workbook, String fileName) throws IOException {
         // Create the byte array for the download
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         workbook.write(outputStream);
@@ -561,7 +653,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         // Answer to the download request
         HttpServletResponse response = (HttpServletResponse) FacesContext.getCurrentInstance().getExternalContext().getResponse();
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment;filename=error_messages.xlsx");
+        response.setHeader("Content-Disposition", "attachment;filename=" + fileName);
         response.getOutputStream().write(bytes);
         response.getOutputStream().flush();
         response.getOutputStream().close();

@@ -46,6 +46,21 @@
 							</h:panelGroup>
 						</div>
 					</div>
+                    <ui:fragment rendered="#{NavigationForm.workflowPlugin.noProcessesFound}">
+                        <div class="box box-color box-bordered lightgrey">
+                            <div class="box-title">
+                                <h3>
+                                    <i class="fa fa-plug"></i>
+                                    <h:outputText value="#{msgs[NavigationForm.workflowPlugin.title]}" />
+                                </h3>
+                            </div>
+                            <div class="box-content">
+                                <h:panelGroup layout="block" class="alert alert-warning">
+                                    #{msgs.plugin_workflow_closestep_no_process_ids_found}
+                                </h:panelGroup>
+                            </div>
+                        </div>
+                    </ui:fragment>
                     <ui:fragment rendered="#{not empty NavigationForm.workflowPlugin.processIds}">
                         <div class="box box-color box-bordered lightgrey">
                             <div class="box-title">
@@ -56,35 +71,64 @@
                             </div>
                             <div class="box-content">
                                 <h:form>
+                                    <div class="alert alert-info">
+                                        #{msgs.plugin_workflow_closestep_step_status_list}
+                                    </div>
+                                    <ul>
+                                        <ui:repeat value="#{NavigationForm.workflowPlugin.statusMessageStrings}" var="status_in_process">
+                                            <li>#{status_in_process}</li>
+                                        </ui:repeat>
+                                    </ul>
+                                    <h:commandLink action="#{NavigationForm.workflowPlugin.downloadStatusMessagesAsExcelFile}" title="#{msgs.downloadStatusAsExcelFile}">
+                                        <span class="btn margin-right-10 fa fa-floppy-o" />
+                                        <h:outputText value="#{msgs.plugin_workflow_closestep_downloadStatusAsExcelFile}" />
+                                    </h:commandLink>
+                                    <br />
+                                    <ui:fragment rendered="#{NavigationForm.workflowPlugin.numberOfErrorMessageTitles == 0}">
+                                        <div class="alert alert-info">
+                                            #{msgs.plugin_workflow_closestep_no_errors}
+                                        </div>
+                                    </ui:fragment>
+                                    <br />
                                     <ui:fragment rendered="#{NavigationForm.workflowPlugin.numberOfErrorMessageTitles > 0}">
-                                        <h:panelGroup layout="block" class="alert alert-warning">
+                                        <div class="alert alert-danger">
                                             #{msgs.plugin_workflow_closestep_errors}
-                                        </h:panelGroup>
-                                        <ul>
-                                            <ui:repeat value="#{NavigationForm.workflowPlugin.errorMessageTitles}" var="process_name" varStatus="process">
-                                                <li>
-                                                    <h:commandLink action="#{NavigationForm.workflowPlugin.toggleExpandedErrorMessage}">
-                                                        <f:param name="id" value="#{process.index}" />
-                                                        #{process_name}
-                                                        <f:ajax render="@form" />
-                                                    </h:commandLink>
-                                                </li>
-                                                <ui:fragment rendered="#{NavigationForm.workflowPlugin.expandedErrorMessages.get(process.index) eq 'true'}">
-                                                    <ul>
-                                                        <ui:repeat value="#{NavigationForm.workflowPlugin.errorMessages.get(process.index)}" var="message" varStatus="message_item">
-                                                            <li>#{message}</li>
-                                                        </ui:repeat>
-                                                    </ul>
-                                                </ui:fragment>
-                                            </ui:repeat>
-                                        </ul>
-                                        <h:commandLink action="#{NavigationForm.workflowPlugin.downloadErrorMessagesAsExcelFile}" title="#{msgs.downloadErrorsAsExcelFile}">
-                                            <span class="btn margin-right-10 fa fa-floppy-o" />
-                                            <h:outputText value="#{msgs.plugin_workflow_closestep_downloadErrorsAsExcelFile}" />
-                                        </h:commandLink>
+                                            <br />
+                                            <br />
+                                            <ul>
+                                                <ui:repeat value="#{NavigationForm.workflowPlugin.errorMessageTitles}" var="process_name" varStatus="process">
+                                                    <li>
+                                                        <h:commandLink action="#{NavigationForm.workflowPlugin.toggleExpandedErrorMessage}">
+                                                            <f:param name="id" value="#{process.index}" />
+                                                            #{process_name}
+                                                            <f:ajax render="@form" />
+                                                        </h:commandLink>
+                                                    </li>
+                                                    <ui:fragment rendered="#{NavigationForm.workflowPlugin.expandedErrorMessages.get(process.index) eq 'true'}">
+                                                        <ul>
+                                                            <ui:repeat value="#{NavigationForm.workflowPlugin.errorMessages.get(process.index)}" var="message" varStatus="message_item">
+                                                                <li>#{message}</li>
+                                                            </ui:repeat>
+                                                        </ul>
+                                                    </ui:fragment>
+                                                </ui:repeat>
+                                            </ul>
+                                            <br />
+                                            <h:commandLink action="#{NavigationForm.workflowPlugin.downloadErrorMessagesAsExcelFile}" title="#{msgs.downloadErrorsAsExcelFile}">
+                                                <span class="btn margin-right-10 fa fa-floppy-o" />
+                                                <h:outputText value="#{msgs.plugin_workflow_closestep_downloadErrorsAsExcelFile}" />
+                                            </h:commandLink>
+                                        </div>
                                     </ui:fragment>
                                     <h:commandButton styleClass="btn btn-blue pull-right" value="#{msgs.plugin_workflow_closestep_closeSteps}" action="#{NavigationForm.workflowPlugin.close}"></h:commandButton>
                                 </h:form>
+                                <br />
+                                <br />
+                                <ui:fragment rendered="#{NavigationForm.workflowPlugin.closingStepsDone}">
+                                    <div class="alert alert-success">
+                                        #{msgs.plugin_workflow_closestep_steps_closed}
+                                    </div>
+                                </ui:fragment>
                             </div>
                         </div>
                     </ui:fragment>
