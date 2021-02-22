@@ -76,9 +76,6 @@
                             </div>
                             <div class="box-content">
                                 <h:form>
-                                    <div class="alert alert-info">
-                                        #{msgs.plugin_workflow_closestep_step_status_list}
-                                    </div>
                                     <ui:repeat value="#{NavigationForm.workflowPlugin.statusMessageStrings}" var="process_name" varStatus="process">
                                         <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateClosable}">
                                             <div class="alert alert-info">
