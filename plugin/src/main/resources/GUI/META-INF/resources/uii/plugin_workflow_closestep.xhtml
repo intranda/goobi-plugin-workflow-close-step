@@ -33,7 +33,12 @@
                                                     id="fileUploader" 
                                                     value="#{NavigationForm.workflowPlugin.file}"/>
                                             </div>
-                                            <div class="form-group">
+                                            <ui:fragment rendered="#{not empty NavigationForm.workflowPlugin.uploadStatusMessage}">
+                    				    		<div class="alert alert-danger">
+                                            		#{NavigationForm.workflowPlugin.uploadStatusMessage}
+                                    		    </div>
+                                    		</ui:fragment>
+                    						<div class="form-group">
                                                 <label>#{msgs.plugin_workflow_closestep_selectStepLabel}</label>
                                                 <h:selectOneMenu value="#{NavigationForm.workflowPlugin.selectedStep}" styleClass="form-control">
                                                     <f:selectItems value="#{NavigationForm.workflowPlugin.closeableSteps}" var="step" itemLabel="#{step.name}" itemValue="#{step.name}"/>
@@ -74,52 +79,38 @@
                                     <div class="alert alert-info">
                                         #{msgs.plugin_workflow_closestep_step_status_list}
                                     </div>
-                                    <ul>
-                                        <ui:repeat value="#{NavigationForm.workflowPlugin.statusMessageStrings}" var="status_in_process">
-                                            <li>#{status_in_process}</li>
-                                        </ui:repeat>
-                                    </ul>
+                                    <ui:repeat value="#{NavigationForm.workflowPlugin.statusMessageStrings}" var="process_name" varStatus="process">
+                                        <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateClosable}">
+                                            <div class="alert alert-info">
+                                                #{process_name}
+                                            </div>
+                                        </ui:fragment>
+                                        <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateNotClosable}">
+                                            <div class="alert alert-danger">
+                                                <h:commandLink action="#{NavigationForm.workflowPlugin.toggleExpandedErrorMessage}">
+                                                    <f:param name="id" value="#{process.index}" />
+                                                    #{process_name}
+                                                    <f:ajax render="@form" />
+                                                </h:commandLink>
+                                                <ui:fragment rendered="#{NavigationForm.workflowPlugin.processExpanded.get(process.index)}">
+                                                    <ul>
+                                                        <ui:repeat value="#{NavigationForm.workflowPlugin.errorMessages.get(process.index)}" var="message" varStatus="message_item">
+                                                            <li>#{message}</li>
+                                                        </ui:repeat>
+                                                    </ul>
+                                                </ui:fragment>
+                                            </div>
+                                        </ui:fragment>
+                                        <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateClosed}">
+                                            <div class="alert alert-success">
+                                                #{process_name}
+                                            </div>
+                                        </ui:fragment>
+                                    </ui:repeat>
                                     <h:commandLink action="#{NavigationForm.workflowPlugin.downloadStatusMessagesAsExcelFile}" title="#{msgs.downloadStatusAsExcelFile}">
                                         <span class="btn margin-right-10 fa fa-floppy-o" />
                                         <h:outputText value="#{msgs.plugin_workflow_closestep_downloadStatusAsExcelFile}" />
                                     </h:commandLink>
-                                    <br />
-                                    <ui:fragment rendered="#{NavigationForm.workflowPlugin.numberOfErrorMessageTitles == 0}">
-                                        <div class="alert alert-info">
-                                            #{msgs.plugin_workflow_closestep_no_errors}
-                                        </div>
-                                    </ui:fragment>
-                                    <br />
-                                    <ui:fragment rendered="#{NavigationForm.workflowPlugin.numberOfErrorMessageTitles > 0}">
-                                        <div class="alert alert-danger">
-                                            #{msgs.plugin_workflow_closestep_errors}
-                                            <br />
-                                            <br />
-                                            <ul>
-                                                <ui:repeat value="#{NavigationForm.workflowPlugin.errorMessageTitles}" var="process_name" varStatus="process">
-                                                    <li>
-                                                        <h:commandLink action="#{NavigationForm.workflowPlugin.toggleExpandedErrorMessage}">
-                                                            <f:param name="id" value="#{process.index}" />
-                                                            #{process_name}
-                                                            <f:ajax render="@form" />
-                                                        </h:commandLink>
-                                                    </li>
-                                                    <ui:fragment rendered="#{NavigationForm.workflowPlugin.expandedErrorMessages.get(process.index) eq 'true'}">
-                                                        <ul>
-                                                            <ui:repeat value="#{NavigationForm.workflowPlugin.errorMessages.get(process.index)}" var="message" varStatus="message_item">
-                                                                <li>#{message}</li>
-                                                            </ui:repeat>
-                                                        </ul>
-                                                    </ui:fragment>
-                                                </ui:repeat>
-                                            </ul>
-                                            <br />
-                                            <h:commandLink action="#{NavigationForm.workflowPlugin.downloadErrorMessagesAsExcelFile}" title="#{msgs.downloadErrorsAsExcelFile}">
-                                                <span class="btn margin-right-10 fa fa-floppy-o" />
-                                                <h:outputText value="#{msgs.plugin_workflow_closestep_downloadErrorsAsExcelFile}" />
-                                            </h:commandLink>
-                                        </div>
-                                    </ui:fragment>
                                     <h:commandButton styleClass="btn btn-blue pull-right" value="#{msgs.plugin_workflow_closestep_closeSteps}" action="#{NavigationForm.workflowPlugin.close}"></h:commandButton>
                                 </h:form>
                                 <br />
@@ -132,8 +123,8 @@
                             </div>
                         </div>
                     </ui:fragment>
-				</div>
-			</div>
-		</h:panelGroup>
-	</composite:implementation>
+                </div>
+            </div>
+        </h:panelGroup>
+    </composite:implementation>
 </ui:composition>
