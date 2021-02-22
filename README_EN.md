@@ -114,7 +114,7 @@ First, an Excel file is uploaded in `XLS` or `XLSX` format to specify the desire
 
 The easiest way to get such a file is to compile a list of the processes you want on the 'Search processes' page and export the result from the 'Processes' page to an Excel file.
 
-**Important:** Make sure that `Vorgang-ID` is selected for column 1, otherwise the file will not contain the required IDs and will not be compatible with this plugin.
+**Important:** Make sure that `Select all fields` is selected, otherwise the file will not contain the required IDs in the second column and will not be compatible with this plugin.
 
 <!---
 Hier optional ein Bildschirmfoto von einer korrekten Excel-Datei einfügen
@@ -128,7 +128,13 @@ Hier optional ein Bildschirmfoto vom ausgeklappten Drop-Down-Menü anzeigen
 
 Now click on `Upload file`.
 
-If all preconditions are fulfilled, the step just selected will now be closed in all processes specified in the Excel file. If errors occur, this will be displayed directly. You can optionally download the list of error descriptions as an Excel file.
+If the Excel file does not contain any task IDs, a corresponding error message is now displayed.
+
+Otherwise, a list with all processes will now appear. Depending on whether a step can be closed, is already closed, or cannot be closed for certain reasons, an appropriate box is now displayed. If there are error messages, the list of error messages within an operation is expandable.
+
+If there are closable steps, these are closed with a click on "Close steps" and the boxes for the corresponding steps change from "Can be closed" to "Is closed".
+
+You can optionally download the list of status and error descriptions as an Excel file.
 
 <!---
 Hier optional ein Bildschirmfoto von Fehlermeldungen anzeigen

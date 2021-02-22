@@ -110,11 +110,11 @@ Wenn das Plugin korrekt installiert und konfiguriert wurde, ist es innerhalb des
 Hier ein Bildschirmfoto vom Plugin einfügen
 -->
 
-Zunächst wird eine Excel-Datei im `XLS`- oder im `XLSX`-Format hochgeladen, um die gewünschten Prozesse festzulegen. Diese beinhaltet eine Auflistung aller IDs der gewünschten Prozesse.
+Zunächst wird eine Excel-Datei im `XLS`- oder im `XLSX`-Format hochgeladen, um die gewünschten Vorgänge festzulegen. Diese beinhaltet eine Auflistung aller IDs der gewünschten Vorgänge.
 
-Am einfachsten bekommen Sie eine solche Datei, wenn Sie auf der Seite `Vorgänge suchen` eine Liste mit den von Ihnen gewünschten Prozessen zusammenstellen und das Ergebnis von der Seite `Vorgänge` in eine Excel-Datei exportieren.
+Am einfachsten bekommen Sie eine solche Datei, wenn Sie auf der Seite `Vorgänge suchen` eine Liste mit den von Ihnen gewünschten Vorgängen zusammenstellen und das Ergebnis von der Seite `Vorgänge` in eine Excel-Datei exportieren.
 
-**Wichtig:** Achten Sie darauf, dass für Spalte 1 die `Vorgang-ID` ausgewählt ist, da sonst die Datei nicht die erforderlichen IDs beinhaltet und nicht kompatibel zu diesem Plugin ist.
+**Wichtig:** Achten Sie darauf, dass `Alle Felder auswählen` ausgewählt ist, da sonst die Datei die erforderlichen IDs nicht in der zweiten Spalte beinhaltet und nicht kompatibel zu diesem Plugin ist.
 
 <!---
 Hier optional ein Bildschirmfoto von einer korrekten Excel-Datei einfügen
@@ -128,7 +128,13 @@ Hier optional ein Bildschirmfoto vom ausgeklappten Drop-Down-Menü anzeigen
 
 Klicken Sie nun auf `Datei hochladen`.
 
-Wenn alle Vorbedingungen erfüllt sind, wird jetzt der soeben ausgewählte Schritt in allen in der Excel-Datei angegebenen Prozessen geschlossen. Sollte es zu Fehlern kommen, wird dies direkt angezeigt. Sie können optional die Liste der Fehlerbeschreibungen als Excel-Datei herunterladen.
+Wenn die Excel-Datei keine Vorgangs-IDs beinhaltet, wird nun eine entsprechende Fehlermeldung angezeigt.
+
+Ansonsten erscheint nun eine Liste mit allen Vorgängen. Je nach dem, ob ein Schritt geschlossen werden kann, bereits geschlossen ist, oder aus bestimmten Gründen nicht geschlossen werden kann, wird nun eine passende Box angezeigt. Gibt es Fehlermeldungen, so ist die Liste an Fehlermeldungen innerhalb eines Vorgangs ausklappbar.
+
+Wenn es schließbare Schritte gibt, werden diese mit einem Klick auf "Schritte schließen" geschlossen und die Boxen für die entsprechenden Schritte ändern sich von "Kann geschlossen werden" zu "Ist geschlossen".
+
+Sie können optional die Liste der Status- und Fehlerbeschreibungen als Excel-Datei herunterladen.
 
 <!---
 Hier optional ein Bildschirmfoto von Fehlermeldungen anzeigen
