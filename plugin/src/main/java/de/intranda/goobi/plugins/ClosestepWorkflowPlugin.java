@@ -67,6 +67,11 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
     public static final String CONFIGURATION_FILE = "plugin_intranda_workflow_closestep.xml";
 
     /**
+     * Error messages might be expanded by default to avoid expanding all of them manually. Or they are not expanded to make the list shorter.
+     */
+    private static final boolean EXPANDED_ERRORS_BY_DEFAULT = false;
+
+    /**
      * The maximum file size in megabyte. This is checked by the validator.
      */
     @Getter
@@ -577,7 +582,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                     this.errorMessagesWarningEnabled = true;
                     status += "can not be closed.";
                     this.processExpandable.add(true);
-                    this.processExpanded.add(true);
+                    this.processExpanded.add(ClosestepWorkflowPlugin.EXPANDED_ERRORS_BY_DEFAULT);
                     this.processStates.add(this.stateNotClosable);
                 }
                 this.statusMessages.add(new String[] { processTitle, processId, status });
