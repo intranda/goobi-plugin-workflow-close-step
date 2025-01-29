@@ -9,10 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import javax.faces.context.FacesContext;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.Part;
-
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
@@ -35,6 +31,9 @@ import de.sub.goobi.helper.CloseStepHelper;
 import de.sub.goobi.helper.Helper;
 import de.sub.goobi.helper.enums.StepStatus;
 import de.sub.goobi.persistence.managers.ProcessManager;
+import jakarta.faces.context.FacesContext;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
@@ -237,9 +236,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         try {
             this.loadConfiguration();
             this.loadXML();
-        } catch (ParseException pe) {
-            this.uploadStatusMessage = pe.getMessage();
-        } catch (ConfigurationException ce) {
+        } catch (ParseException | ConfigurationException ce) {
             this.uploadStatusMessage = ce.getMessage();
         }
     }
@@ -263,7 +260,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
      * @throws ParseException When there is missing / wrong content in the XML file
      */
     public void loadXML() throws ParseException {
-        this.closeableSteps = new ArrayList<CloseableStep>();
+        this.closeableSteps = new ArrayList<>();
         // Load maximum megabyte per file
         try {
             SubnodeConfiguration maximum_megabyte = (SubnodeConfiguration) configuration.configurationsAt("//maximum_megabyte_per_file").get(0);
@@ -359,8 +356,8 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             return "";
         }
         StringBuffer sb = new StringBuffer();
-        for (int i = 0; i < this.closeableSteps.size(); i++) {
-            sb.append(this.closeableSteps.get(i).toString());
+        for (CloseableStep element : this.closeableSteps) {
+            sb.append(element.toString());
         }
         return sb.toString();
     }
@@ -394,8 +391,8 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
         }
         String[] headerParts = header.split(";");
         String tmp;
-        for (int headerIndex = 0; headerIndex < headerParts.length; headerIndex++) {
-            tmp = headerParts[headerIndex];
+        for (String headerPart : headerParts) {
+            tmp = headerPart;
             if (tmp.trim().startsWith("filename")) {
                 tmp = tmp.substring(tmp.indexOf('=') + 1, tmp.length());
                 tmp = tmp.trim().replace("\"", "");
@@ -444,10 +441,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
             } else if (this.fileName.endsWith("xlsx")) {
                 workbook = new XSSFWorkbook(file);
             }
-        } catch (NullPointerException npe) {
-            this.readInStatusMessage = "Error while reading the excel file: " + npe.getMessage();
-            return false;
-        } catch (IOException ioe) {
+        } catch (NullPointerException | IOException ioe) {
             this.readInStatusMessage = "Error while reading the excel file: " + ioe.getMessage();
             return false;
         } catch (OldExcelFormatException oefe) {
@@ -657,7 +651,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                 cell.setCellValue(message[column]);
             }
             // Insert all errors for this process
-            for (int messageIndex = 0; messageIndex < this.errorMessages.get(processIndex).size(); messageIndex++) {
+            for (String element : this.errorMessages.get(processIndex)) {
                 Row messageRow = sheet.createRow(currentRow);
                 currentRow++;
                 Cell emptyCell0 = messageRow.createCell(0);
@@ -665,7 +659,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serial
                 Cell emptyCell1 = messageRow.createCell(1);
                 emptyCell1.setCellValue("");
                 Cell errorMessageCell = messageRow.createCell(2);
-                errorMessageCell.setCellValue(this.errorMessages.get(processIndex).get(messageIndex));
+                errorMessageCell.setCellValue(element);
             }
         }
         ClosestepWorkflowPlugin.downloadWorkbook(workbook, "status_messages.xlsx");
