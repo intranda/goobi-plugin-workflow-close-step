@@ -1,127 +1,137 @@
-<ui:composition xmlns="http://www.w3.org/1999/xhtml" xmlns:ui="http://xmlns.jcp.org/jsf/facelets" xmlns:composite="http://xmlns.jcp.org/jsf/composite" xmlns:h="http://xmlns.jcp.org/jsf/html" xmlns:f="http://xmlns.jcp.org/jsf/core" xmlns:x="http://myfaces.apache.org/tomahawk" xmlns:intranda="http://xmlns.jcp.org/jsf/composite/composites" xmlns:pt="http://xmlns.jcp.org/jsf/passthrough" xmlns:p="http://primefaces.org/ui">
+<ui:composition
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+    xmlns:composite="http://xmlns.jcp.org/jsf/composite"
+    xmlns:h="http://xmlns.jcp.org/jsf/html"
+    xmlns:f="http://xmlns.jcp.org/jsf/core"
+    xmlns:intranda="http://xmlns.jcp.org/jsf/composite/composites"
+    xmlns:pt="http://xmlns.jcp.org/jsf/passthrough"
+    xmlns:p="http://primefaces.org/ui"
+    xmlns:section="http://goobi.io/section"
+    xmlns:form="http://goobi.io/form">
 	<composite:interface>
 	</composite:interface>
 	<composite:implementation>
-		<h:panelGroup>
-			<div class="row">
-				<div class="col-sm-12">
-					<div class="box box-color box-bordered orange">
-						<div class="box-title">
-							<h3>
-								<i class="fa fa-plug"></i>
-								<h:outputText value="#{msgs[NavigationForm.workflowPlugin.title]}" />
-							</h3>
-						</div>
-						<div class="box-content">
-							<h:panelGroup
-								rendered="#{!LoginForm.hasRole('Plugin_workflow_closestep')}">
-								<h:outputText
-									styleClass="alert alert-danger alert-dismissable margin-bottom-10 margin-top-10"
-									value="#{msgs.plugin_administration_missingPermission} Plugin_workflow_closestep" />
-							</h:panelGroup>
-							<h:panelGroup id="actionform" rendered="#{LoginForm.hasRole('Plugin_workflow_closestep')}">
-								<div class="row">
-									<h:form id="fileUploadForm" prependId="false" enctype="multipart/form-data">
-                                        <div class="col-md-12">
-<!--     									   <h3>#{msgs.plugin_workflow_closestep_header}</h3> -->
-    										<div class="alert alert-info">
-                                                #{msgs.plugin_workflow_closestep_introText}
-                                            </div>
-                                            <div class="form-group">
-                                                <label>#{msgs.plugin_workflow_closestep_selectFileLabel}</label>
-        										<h:inputFile 
-                                                    id="fileUploader" 
-                                                    value="#{NavigationForm.workflowPlugin.file}"/>
-                                            </div>
-                                            <ui:fragment rendered="#{not empty NavigationForm.workflowPlugin.uploadStatusMessage}">
-                    				    		<div class="alert alert-danger">
-                                            		#{NavigationForm.workflowPlugin.uploadStatusMessage}
-                                    		    </div>
-                                    		</ui:fragment>
-                    						<div class="form-group">
-                                                <label>#{msgs.plugin_workflow_closestep_selectStepLabel}</label>
-                                                <h:selectOneMenu value="#{NavigationForm.workflowPlugin.selectedStep}" styleClass="form-control">
-                                                    <f:selectItems value="#{NavigationForm.workflowPlugin.closeableSteps}" var="step" itemLabel="#{step.name}" itemValue="#{step.name}"/>
-                                                </h:selectOneMenu>
-                                            </div>
-    										<h:commandButton styleClass="btn btn-blue pull-right" value="#{msgs.plugin_workflow_closestep_upload}" action="#{NavigationForm.workflowPlugin.uploadExcelFile}"></h:commandButton>
-                                        </div>
-									</h:form>
-                                </div>
-							</h:panelGroup>
-						</div>
-					</div>
-                    <ui:fragment rendered="#{NavigationForm.workflowPlugin.noProcessesFound}">
-                        <div class="box box-color box-bordered lightgrey">
-                            <div class="box-title">
-                                <h3>
-                                    <i class="fa fa-plug"></i>
-                                    <h:outputText value="#{msgs[NavigationForm.workflowPlugin.title]}" />
-                                </h3>
-                            </div>
-                            <div class="box-content">
-                                <h:panelGroup layout="block" class="alert alert-warning">
-                                    #{msgs.plugin_workflow_closestep_no_process_ids_found}
-                                </h:panelGroup>
-                            </div>
-                        </div>
-                    </ui:fragment>
-                    <ui:fragment rendered="#{not empty NavigationForm.workflowPlugin.processIds}">
-                        <div class="box box-color box-bordered lightgrey">
-                            <div class="box-title">
-                                <h3>
-                                    <i class="fa fa-plug"></i>
-                                    <h:outputText value="#{msgs[NavigationForm.workflowPlugin.title]}" />
-                                </h3>
-                            </div>
-                            <div class="box-content">
-                                <h:form>
-                                    <ui:repeat value="#{NavigationForm.workflowPlugin.statusMessageStrings}" var="process_name" varStatus="process">
-                                        <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateClosable}">
-                                            <div class="alert alert-info">
-                                                #{process_name}
-                                            </div>
-                                        </ui:fragment>
-                                        <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateNotClosable}">
-                                            <div class="alert alert-danger">
-                                                <h:commandLink action="#{NavigationForm.workflowPlugin.toggleExpandedErrorMessage}">
-                                                    <f:param name="id" value="#{process.index}" />
-                                                    #{process_name}
-                                                    <f:ajax render="@form" />
-                                                </h:commandLink>
-                                                <ui:fragment rendered="#{NavigationForm.workflowPlugin.processExpanded.get(process.index)}">
-                                                    <ul>
-                                                        <ui:repeat value="#{NavigationForm.workflowPlugin.errorMessages.get(process.index)}" var="message" varStatus="message_item">
-                                                            <li>#{message}</li>
-                                                        </ui:repeat>
-                                                    </ul>
-                                                </ui:fragment>
-                                            </div>
-                                        </ui:fragment>
-                                        <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateClosed}">
-                                            <div class="alert alert-success">
-                                                #{process_name}
-                                            </div>
-                                        </ui:fragment>
-                                    </ui:repeat>
-                                    <h:commandLink action="#{NavigationForm.workflowPlugin.downloadStatusMessagesAsExcelFile}" title="#{msgs.downloadStatusAsExcelFile}">
-                                        <span class="btn margin-right-10 fa fa-floppy-o" />
-                                        <h:outputText value="#{msgs.plugin_workflow_closestep_downloadStatusAsExcelFile}" />
-                                    </h:commandLink>
-                                    <h:commandButton styleClass="btn btn-blue pull-right" value="#{msgs.plugin_workflow_closestep_closeSteps}" action="#{NavigationForm.workflowPlugin.close}"></h:commandButton>
-                                </h:form>
-                                <br />
-                                <br />
-                                <ui:fragment rendered="#{NavigationForm.workflowPlugin.closingStepsDone}">
-                                    <div class="alert alert-success">
-                                        #{msgs.plugin_workflow_closestep_steps_closed}
+        <h:panelGroup
+            rendered="#{!LoginForm.hasRole('Plugin_workflow_closestep')}"
+            styleClass="alert alert-danger"
+            layout="block">
+                #{msgs.plugin_administration_missingPermission} Plugin_workflow_closestep
+        </h:panelGroup>
+        <h:panelGroup
+            layout="block"
+            styleClass="flow"
+            rendered="#{LoginForm.hasRole('Plugin_workflow_closestep')}">
+            <ui:fragment rendered="#{NavigationForm.workflowPlugin.noProcessesFound}">
+                <h:panelGroup layout="block" class="alert alert-warning">
+                    #{msgs.plugin_workflow_closestep_no_process_ids_found}
+                </h:panelGroup>
+            </ui:fragment>
+            <ui:fragment rendered="#{not empty NavigationForm.workflowPlugin.uploadStatusMessage}">
+                <div class="alert alert-danger">
+                    #{NavigationForm.workflowPlugin.uploadStatusMessage}
+                </div>
+            </ui:fragment>
+            <ui:fragment rendered="#{NavigationForm.workflowPlugin.closingStepsDone}">
+                <div class="alert alert-success">
+                    #{msgs.plugin_workflow_closestep_steps_closed}
+                </div>
+            </ui:fragment>
+            <div class="alert alert-info">
+                #{msgs.plugin_workflow_closestep_introText}
+            </div>
+            <section:section type="action">
+                <section:header
+                    icon="plug"
+                    title="#{msgs[NavigationForm.workflowPlugin.title]}" />
+                <h:form id="fileUploadForm" enctype="multipart/form-data">
+                    <section:body>
+                        <form:field
+                            label="#{msgs.plugin_workflow_closestep_selectFileLabel}">
+                            <h:inputFile
+                                id="fileUploader"
+                                value="#{NavigationForm.workflowPlugin.file}"
+                                styleClass="form-control"/>
+                            <form:message target="fileUploader"/>
+                        </form:field>
+                        <form:field
+                            label="#{msgs.plugin_workflow_closestep_selectStepLabel}">
+                            <h:selectOneMenu
+                                id="stepSelection"
+                                value="#{NavigationForm.workflowPlugin.selectedStep}"
+                                styleClass="form-control">
+                                <f:selectItems
+                                    value="#{NavigationForm.workflowPlugin.closeableSteps}"
+                                    var="step"
+                                    itemLabel="#{step.name}"
+                                    itemValue="#{step.name}"/>
+                            </h:selectOneMenu>
+                            <form:message target="stepSelection"/>
+                        </form:field>
+                    </section:body>
+                    <section:footer>
+                        <h:commandButton
+                            styleClass="btn btn-action"
+                            value="#{msgs.plugin_workflow_closestep_upload}"
+                            action="#{NavigationForm.workflowPlugin.uploadExcelFile}" />
+                    </section:footer>
+                </h:form>
+            </section:section>
+            <ui:fragment rendered="#{not empty NavigationForm.workflowPlugin.processIds}">
+                <section:section
+                    type="outline">
+                    <section:header
+                        icon="plug"
+                        title="#{msgs[NavigationForm.workflowPlugin.title]}" />
+                    <h:form styleClass="flow">
+                        <section:body padding="true">
+                            <ui:repeat value="#{NavigationForm.workflowPlugin.statusMessageStrings}" var="process_name" varStatus="process">
+                                <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateClosable}">
+                                    <div class="alert alert-info">
+                                        #{process_name}
                                     </div>
                                 </ui:fragment>
-                            </div>
-                        </div>
-                    </ui:fragment>
-                </div>
-            </div>
+                                <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateNotClosable}">
+                                    <div class="alert alert-danger">
+                                        <h:commandLink action="#{NavigationForm.workflowPlugin.toggleExpandedErrorMessage}">
+                                            <f:param name="id" value="#{process.index}" />
+                                            #{process_name}
+                                            <f:ajax render="@form" />
+                                        </h:commandLink>
+                                        <ui:fragment rendered="#{NavigationForm.workflowPlugin.processExpanded.get(process.index)}">
+                                            <ul>
+                                                <ui:repeat value="#{NavigationForm.workflowPlugin.errorMessages.get(process.index)}" var="message" varStatus="message_item">
+                                                    <li>#{message}</li>
+                                                </ui:repeat>
+                                            </ul>
+                                        </ui:fragment>
+                                    </div>
+                                </ui:fragment>
+                                <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateClosed}">
+                                    <div class="alert alert-success">
+                                        #{process_name}
+                                    </div>
+                                </ui:fragment>
+                            </ui:repeat>
+                        </section:body>
+                        <section:footer>
+                            <h:commandLink
+                                action="#{NavigationForm.workflowPlugin.downloadStatusMessagesAsExcelFile}"
+                                title="#{msgs.downloadStatusAsExcelFile}"
+                                styleClass="btn btn-blank">
+                                <span class="fa fa-floppy-o" />
+                                <span>
+                                    <h:outputText value="#{msgs.plugin_workflow_closestep_downloadStatusAsExcelFile}" />
+                                </span>
+                            </h:commandLink>
+                            <h:commandButton
+                                styleClass="btn btn-primary"
+                                value="#{msgs.plugin_workflow_closestep_closeSteps}"
+                                action="#{NavigationForm.workflowPlugin.close}"></h:commandButton>
+                        </section:footer>
+                    </h:form>
+                </section:section>
+            </ui:fragment>
         </h:panelGroup>
     </composite:implementation>
 </ui:composition>
