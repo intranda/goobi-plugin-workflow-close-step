@@ -24,7 +24,7 @@ Um für das Plugin die schließbaren Schritte festzulegen, muss folgende Konfigu
 
 Für eine Nutzung dieses Plugins muss der Nutzer über die korrekte Rollenberechtigung verfügen.
 
-Bitte weisen Sie daher der Gruppe die Rolle `Plugin_Goobi_Closestep` zu.
+Bitte weisen Sie daher der Gruppe die Rolle `Plugin_workflow_closestep` zu.
 
 ![Korrekt zugewiesene Rolle](screen1_de.png)
 
