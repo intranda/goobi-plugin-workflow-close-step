@@ -24,7 +24,7 @@ To set the closable steps for the plugin, the following configuration file must 
 
 To use this plugin, the user must have the correct role permission.
 
-Therefore, please assign role `Plugin_Goobi_Closestep` to the group.
+Therefore, please assign role `Plugin_workflow_closestep` to the group.
 
 ![Correctly assigned role](screen1_en.png)
 
