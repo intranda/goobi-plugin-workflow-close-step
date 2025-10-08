@@ -3,6 +3,10 @@ title: Arbeitsschritte schließen
 identifier: intranda_workflow_close_step
 description: Step Plugin für Goobi workflow für das gleichzeitige Abschließen mehrerer Arbeitsschritte
 published: true
+keywords:
+    - Goobi workflow
+    - Plugin
+    - Workflow Plugin
 ---
 
 ## Einführung

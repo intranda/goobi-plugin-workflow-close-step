@@ -3,6 +3,10 @@ title: Close steps
 identifier: intranda_workflow_close_step
 description: Step plugin for Goobi workflow for the simultaneous completion of several work steps
 published: true
+keywords:
+    - Goobi workflow
+    - Plugin
+    - Workflow Plugin
 ---
 
 ## Introduction
