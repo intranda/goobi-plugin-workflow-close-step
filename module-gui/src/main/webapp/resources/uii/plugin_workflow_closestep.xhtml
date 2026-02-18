@@ -8,7 +8,8 @@
     xmlns:pt="http://xmlns.jcp.org/jsf/passthrough"
     xmlns:p="http://primefaces.org/ui"
     xmlns:section="http://goobi.io/section"
-    xmlns:form="http://goobi.io/form">
+    xmlns:form="http://goobi.io/form"
+    xmlns:util="http://goobi.io/util">
 	<composite:interface>
 	</composite:interface>
 	<composite:implementation>
@@ -119,10 +120,7 @@
                                 action="#{NavigationForm.workflowPlugin.downloadStatusMessagesAsExcelFile}"
                                 title="#{msgs.downloadStatusAsExcelFile}"
                                 styleClass="btn btn-blank">
-                                <span class="fa fa-floppy-o" />
-                                <span>
-                                    <h:outputText value="#{msgs.plugin_workflow_closestep_downloadStatusAsExcelFile}" />
-                                </span>
+                                <util:icon-text icon="download" text="#{msgs.plugin_workflow_closestep_downloadStatusAsExcelFile}" />
                             </h:commandLink>
                             <h:commandButton
                                 styleClass="btn btn-primary"
