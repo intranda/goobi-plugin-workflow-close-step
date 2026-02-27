@@ -3,7 +3,6 @@ package de.intranda.goobi.plugins;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.Serializable;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +23,6 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.goobi.beans.Step;
 import org.goobi.production.enums.PluginType;
-import org.goobi.production.plugin.interfaces.IPlugin;
 import org.goobi.production.plugin.interfaces.IWorkflowPlugin;
 
 import de.sub.goobi.helper.CloseStepHelper;
@@ -46,7 +44,7 @@ import net.xeoh.plugins.base.annotations.PluginImplementation;
  */
 @PluginImplementation
 @Log4j2
-public class ClosestepWorkflowPlugin implements IWorkflowPlugin, IPlugin, Serializable {
+public class ClosestepWorkflowPlugin implements IWorkflowPlugin {
 
     /**
      * The serial version UID
