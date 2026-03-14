@@ -49,7 +49,7 @@ Klicken Sie nun auf `Datei hochladen`.
 
 Wenn die Excel-Datei keine Vorgangs-IDs beinhaltet, wird nun eine entsprechende Fehlermeldung angezeigt.
 
-Ansonsten erscheint nun eine Liste mit allen Vorgängen. Je nach dem, ob ein Schritt geschlossen werden kann, bereits geschlossen ist, oder aus bestimmten Gründen nicht geschlossen werden kann, wird nun eine passende Box angezeigt. Gibt es Fehlermeldungen, so ist die Liste an Fehlermeldungen innerhalb eines Vorgangs ausklappbar.
+Ansonsten erscheint nun eine Liste mit allen Vorgängen. Je nachdem, ob ein Schritt geschlossen werden kann, bereits geschlossen ist, oder aus bestimmten Gründen nicht geschlossen werden kann, wird nun eine passende Box angezeigt. Gibt es Fehlermeldungen, so ist die Liste an Fehlermeldungen innerhalb eines Vorgangs ausklappbar.
 
 Wenn es schließbare Schritte gibt, werden diese mit einem Klick auf "Schritte schließen" geschlossen und die Boxen für die entsprechenden Schritte ändern sich von "Kann geschlossen werden" zu "Ist geschlossen".
 
