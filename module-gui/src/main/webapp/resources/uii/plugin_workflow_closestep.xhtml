@@ -13,34 +13,24 @@
 	<composite:interface>
 	</composite:interface>
 	<composite:implementation>
-        <h:panelGroup
-            rendered="#{!LoginForm.hasRole('Plugin_workflow_closestep')}"
-            styleClass="alert alert-danger"
-            layout="block">
-                #{msgs.plugin_administration_missingPermission} Plugin_workflow_closestep
-        </h:panelGroup>
+        <util:missing-rights rights="Plugin_workflow_closestep" rendered="true" />
         <h:panelGroup
             layout="block"
             styleClass="flow"
             rendered="#{LoginForm.hasRole('Plugin_workflow_closestep')}">
-            <ui:fragment rendered="#{NavigationForm.workflowPlugin.noProcessesFound}">
-                <h:panelGroup layout="block" class="alert alert-warning">
-                    #{msgs.plugin_workflow_closestep_no_process_ids_found}
-                </h:panelGroup>
-            </ui:fragment>
-            <ui:fragment rendered="#{not empty NavigationForm.workflowPlugin.uploadStatusMessage}">
-                <div class="alert alert-danger">
-                    #{NavigationForm.workflowPlugin.uploadStatusMessage}
-                </div>
-            </ui:fragment>
-            <ui:fragment rendered="#{NavigationForm.workflowPlugin.closingStepsDone}">
-                <div class="alert alert-success">
-                    #{msgs.plugin_workflow_closestep_steps_closed}
-                </div>
-            </ui:fragment>
-            <div class="alert alert-info">
-                #{msgs.plugin_workflow_closestep_introText}
-            </div>
+            <util:alert
+                type="warning"
+                message="#{msgs.plugin_workflow_closestep_no_process_ids_found}"
+                rendered="#{NavigationForm.workflowPlugin.noProcessesFound}" />
+            <util:alert
+                type="danger"
+                message="#{NavigationForm.workflowPlugin.uploadStatusMessage}"
+                rendered="#{not empty NavigationForm.workflowPlugin.uploadStatusMessage}" />
+            <util:alert
+                type="success"
+                message="#{msgs.plugin_workflow_closestep_steps_closed}"
+                rendered="#{NavigationForm.workflowPlugin.closingStepsDone}" />
+            <util:alert type="info" message="#{msgs.plugin_workflow_closestep_introText}" />
             <section:section type="action">
                 <section:header
                     icon="plug"
@@ -87,32 +77,30 @@
                     <h:form styleClass="flow">
                         <section:body padding="true">
                             <ui:repeat value="#{NavigationForm.workflowPlugin.statusMessageStrings}" var="process_name" varStatus="process">
-                                <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateClosable}">
-                                    <div class="alert alert-info">
+                                <util:alert
+                                    type="info"
+                                    message="#{process_name}"
+                                    rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateClosable}" />
+                                <util:alert
+                                    type="danger"
+                                    rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateNotClosable}">
+                                    <h:commandLink action="#{NavigationForm.workflowPlugin.toggleExpandedErrorMessage}">
+                                        <f:param name="id" value="#{process.index}" />
                                         #{process_name}
-                                    </div>
-                                </ui:fragment>
-                                <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateNotClosable}">
-                                    <div class="alert alert-danger">
-                                        <h:commandLink action="#{NavigationForm.workflowPlugin.toggleExpandedErrorMessage}">
-                                            <f:param name="id" value="#{process.index}" />
-                                            #{process_name}
-                                            <f:ajax render="@form" />
-                                        </h:commandLink>
-                                        <ui:fragment rendered="#{NavigationForm.workflowPlugin.processExpanded.get(process.index)}">
-                                            <ul>
-                                                <ui:repeat value="#{NavigationForm.workflowPlugin.errorMessages.get(process.index)}" var="message" varStatus="message_item">
-                                                    <li>#{message}</li>
-                                                </ui:repeat>
-                                            </ul>
-                                        </ui:fragment>
-                                    </div>
-                                </ui:fragment>
-                                <ui:fragment rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateClosed}">
-                                    <div class="alert alert-success">
-                                        #{process_name}
-                                    </div>
-                                </ui:fragment>
+                                        <f:ajax render="@form" />
+                                    </h:commandLink>
+                                    <ui:fragment rendered="#{NavigationForm.workflowPlugin.processExpanded.get(process.index)}">
+                                        <ul>
+                                            <ui:repeat value="#{NavigationForm.workflowPlugin.errorMessages.get(process.index)}" var="message" varStatus="message_item">
+                                                <li>#{message}</li>
+                                            </ui:repeat>
+                                        </ul>
+                                    </ui:fragment>
+                                </util:alert>
+                                <util:alert
+                                    type="success"
+                                    message="#{process_name}"
+                                    rendered="#{NavigationForm.workflowPlugin.processStates.get(process.index) eq NavigationForm.workflowPlugin.stateClosed}" />
                             </ui:repeat>
                         </section:body>
                         <section:footer>
