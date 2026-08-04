@@ -1,8 +1,8 @@
 package de.intranda.goobi.plugins;
 
 import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -433,7 +433,7 @@ public class ClosestepWorkflowPlugin implements IWorkflowPlugin {
         this.processIds = new ArrayList<>();
         Workbook workbook = null;
         try {
-            FileInputStream file = (FileInputStream) (this.file.getInputStream());
+            InputStream file = this.file.getInputStream();
             if (this.fileName.endsWith("xls")) {
                 workbook = new HSSFWorkbook(file);
             } else if (this.fileName.endsWith("xlsx")) {
